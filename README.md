@@ -23,4 +23,4 @@ Progress Log
 Day 1: Created basic expense tracker with add, view, and total features
 
 
-Started: [Today's Date]
+Started: 10102025
