@@ -1,8 +1,10 @@
-# expense_tracker.py - Day 1
-# Simple expense tracker that stores expenses in a list
+# expense_tracker.py - Day 2
+# Added automatic date tracking for each expense
+
+from datetime import datetime  # NEW: Import datetime module
 
 def main():
-    expenses = []  # List to store all expenses
+    expenses = []
     
     print("=== Welcome to Expense Tracker ===")
     print()
@@ -21,12 +23,19 @@ def main():
             amount = float(input("Enter amount: $"))
             description = input("Enter description: ")
             
+            # NEW: Get current date and time
+            current_date = datetime.now()
+            
             expense = {
                 "amount": amount,
-                "description": description
+                "description": description,
+                "date": current_date  # NEW: Store the date
             }
             expenses.append(expense)
-            print(f"✓ Added: ${amount} - {description}")
+            
+            # NEW: Show formatted date when confirming
+            formatted_date = current_date.strftime("%Y-%m-%d %H:%M")
+            print(f"✓ Added: ${amount} - {description} on {formatted_date}")
             
         elif choice == "2":
             # View all expenses
@@ -35,7 +44,9 @@ def main():
             else:
                 print("\n=== All Expenses ===")
                 for i, expense in enumerate(expenses, 1):
-                    print(f"{i}. ${expense['amount']:.2f} - {expense['description']}")
+                    # NEW: Format and display the date
+                    date_str = expense['date'].strftime("%Y-%m-%d %H:%M")
+                    print(f"{i}. ${expense['amount']:.2f} - {expense['description']} ({date_str})")
                     
         elif choice == "3":
             # View total
