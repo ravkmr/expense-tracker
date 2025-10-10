@@ -1,10 +1,12 @@
-# expense_tracker.py - Day 3
-# Added expense categories and filtering
+# expense_tracker.py - Day 4
+# Added CSV file storage for data persistence
 
 from datetime import datetime
+import csv  # NEW: Import CSV module
+import os   # NEW: Import OS module for file checks
 
-# NEW: Define available categories
 CATEGORIES = ["Food", "Transport", "Entertainment", "Shopping", "Bills", "Other"]
+CSV_FILE = "expenses.csv"  # NEW: Filename for storing data
 
 def display_categories():
     """Display available categories"""
@@ -26,8 +28,56 @@ def get_category():
         except ValueError:
             print("Please enter a valid number")
 
-def main():
+# NEW: Function to load expenses from CSV file
+def load_expenses():
+    """Load expenses from CSV file"""
     expenses = []
+    
+    # Check if file exists
+    if not os.path.exists(CSV_FILE):
+        return expenses  # Return empty list if no file
+    
+    try:
+        with open(CSV_FILE, 'r', newline='', encoding='utf-8') as file:
+            reader = csv.DictReader(file)
+            for row in reader:
+                expense = {
+                    "amount": float(row['amount']),
+                    "description": row['description'],
+                    "category": row['category'],
+                    "date": datetime.strptime(row['date'], "%Y-%m-%d %H:%M:%S")
+                }
+                expenses.append(expense)
+        print(f"✓ Loaded {len(expenses)} expenses from file")
+    except Exception as e:
+        print(f"Error loading expenses: {e}")
+    
+    return expenses
+
+# NEW: Function to save expenses to CSV file
+def save_expenses(expenses):
+    """Save expenses to CSV file"""
+    try:
+        with open(CSV_FILE, 'w', newline='', encoding='utf-8') as file:
+            fieldnames = ['amount', 'description', 'category', 'date']
+            writer = csv.DictWriter(file, fieldnames=fieldnames)
+            
+            writer.writeheader()  # Write column headers
+            for expense in expenses:
+                writer.writerow({
+                    'amount': expense['amount'],
+                    'description': expense['description'],
+                    'category': expense['category'],
+                    'date': expense['date'].strftime("%Y-%m-%d %H:%M:%S")
+                })
+        return True
+    except Exception as e:
+        print(f"Error saving expenses: {e}")
+        return False
+
+def main():
+    # NEW: Load existing expenses when program starts
+    expenses = load_expenses()
     
     print("=== Welcome to Expense Tracker ===")
     print()
@@ -37,7 +87,7 @@ def main():
         print("What would you like to do?")
         print("1. Add an expense")
         print("2. View all expenses")
-        print("3. View expenses by category")  # NEW option
+        print("3. View expenses by category")
         print("4. View total")
         print("5. Exit")
         
@@ -47,20 +97,24 @@ def main():
             # Add expense
             amount = float(input("Enter amount: $"))
             description = input("Enter description: ")
-            category = get_category()  # NEW: Get category
+            category = get_category()
             
             current_date = datetime.now()
             
             expense = {
                 "amount": amount,
                 "description": description,
-                "category": category,  # NEW: Store category
+                "category": category,
                 "date": current_date
             }
             expenses.append(expense)
             
-            formatted_date = current_date.strftime("%Y-%m-%d %H:%M")
-            print(f"✓ Added: ${amount} - {description} [{category}] on {formatted_date}")
+            # NEW: Save to file after adding
+            if save_expenses(expenses):
+                formatted_date = current_date.strftime("%Y-%m-%d %H:%M")
+                print(f"✓ Added and saved: ${amount} - {description} [{category}] on {formatted_date}")
+            else:
+                print("✓ Added but failed to save to file")
             
         elif choice == "2":
             # View all expenses
@@ -71,11 +125,10 @@ def main():
                 print("=== All Expenses ===")
                 for i, expense in enumerate(expenses, 1):
                     date_str = expense['date'].strftime("%Y-%m-%d %H:%M")
-                    # NEW: Display category
                     print(f"{i}. ${expense['amount']:.2f} - {expense['description']} [{expense['category']}] ({date_str})")
                     
         elif choice == "3":
-            # NEW: View expenses by category
+            # View expenses by category
             if len(expenses) == 0:
                 print("\nNo expenses yet!")
             else:
@@ -85,7 +138,6 @@ def main():
                     if 1 <= cat_choice <= len(CATEGORIES):
                         selected_category = CATEGORIES[cat_choice - 1]
                         
-                        # Filter expenses by category
                         filtered = [e for e in expenses if e['category'] == selected_category]
                         
                         if len(filtered) == 0:
@@ -111,7 +163,6 @@ def main():
                 total = sum(expense['amount'] for expense in expenses)
                 print(f"\nTotal expenses: ${total:.2f}")
                 
-                # NEW: Show breakdown by category
                 print("\nBreakdown by category:")
                 for category in CATEGORIES:
                     cat_expenses = [e for e in expenses if e['category'] == category]

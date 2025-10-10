@@ -4,7 +4,9 @@ A simple Python project to track daily expenses. Built as part of my Python lear
 
 ## Current Features
 - Add expenses with amount, description, and category
-- **6 categories**: Food, Transport, Entertainment, Shopping, Bills, Other
+- **Data persistence**: Expenses saved to CSV file automatically
+- **Auto-load**: Previous expenses load when program starts
+- 6 categories: Food, Transport, Entertainment, Shopping, Bills, Other
 - Automatic date/time tracking for each expense
 - View all expenses with timestamps and categories
 - Filter expenses by category
@@ -28,6 +30,7 @@ Building this project over 3-4 months to learn:
 ## Progress Log
 - **Day 1**: Created basic expense tracker with add, view, and total features
 - **Day 2**: Added automatic date and time tracking for each expense
+- **Day 3**: Added expense categories, filtering, and category breakdown with percentages
 
 ---
 Started: [Today's Date]
