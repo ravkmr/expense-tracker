@@ -1,5 +1,5 @@
-# expense_tracker.py - Day 5
-# Added delete expense functionality
+# expense_tracker.py - Day 6
+# Added edit expense functionality
 
 from datetime import datetime
 import csv
@@ -72,14 +72,12 @@ def save_expenses(expenses):
         print(f"Error saving expenses: {e}")
         return False
 
-# NEW: Function to delete an expense
 def delete_expense(expenses):
     """Delete an expense from the list"""
     if len(expenses) == 0:
         print("\nNo expenses to delete!")
         return expenses
     
-    # Display all expenses with numbers
     print("\n" + "="*40)
     print("=== Select Expense to Delete ===")
     for i, expense in enumerate(expenses, 1):
@@ -95,13 +93,92 @@ def delete_expense(expenses):
         
         if 1 <= choice <= len(expenses):
             deleted = expenses[choice - 1]
-            expenses.pop(choice - 1)  # Remove from list
+            expenses.pop(choice - 1)
             
-            # Save updated list
             if save_expenses(expenses):
                 print(f"✓ Deleted: ${deleted['amount']:.2f} - {deleted['description']}")
             else:
                 print("Error: Failed to save after deletion")
+        else:
+            print(f"Invalid number. Please enter 1-{len(expenses)}")
+    except ValueError:
+        print("Please enter a valid number")
+    
+    return expenses
+
+# NEW: Function to edit an expense
+def edit_expense(expenses):
+    """Edit an existing expense"""
+    if len(expenses) == 0:
+        print("\nNo expenses to edit!")
+        return expenses
+    
+    # Display all expenses
+    print("\n" + "="*40)
+    print("=== Select Expense to Edit ===")
+    for i, expense in enumerate(expenses, 1):
+        date_str = expense['date'].strftime("%Y-%m-%d %H:%M")
+        print(f"{i}. ${expense['amount']:.2f} - {expense['description']} [{expense['category']}] ({date_str})")
+    
+    try:
+        choice = int(input("\nEnter expense number to edit (0 to cancel): "))
+        
+        if choice == 0:
+            print("Edit cancelled")
+            return expenses
+        
+        if 1 <= choice <= len(expenses):
+            expense = expenses[choice - 1]
+            
+            # Show current values
+            print("\n" + "="*40)
+            print("=== Current Expense Details ===")
+            print(f"Amount: ${expense['amount']:.2f}")
+            print(f"Description: {expense['description']}")
+            print(f"Category: {expense['category']}")
+            print(f"Date: {expense['date'].strftime('%Y-%m-%d %H:%M')}")
+            
+            print("\nWhat would you like to edit?")
+            print("1. Amount")
+            print("2. Description")
+            print("3. Category")
+            print("4. All of the above")
+            print("0. Cancel")
+            
+            edit_choice = input("\nEnter your choice (0-4): ")
+            
+            if edit_choice == "0":
+                print("Edit cancelled")
+                return expenses
+            
+            # Edit amount
+            if edit_choice in ["1", "4"]:
+                try:
+                    new_amount = input(f"Enter new amount (current: ${expense['amount']:.2f}): $")
+                    if new_amount.strip():  # Only update if user entered something
+                        expense['amount'] = float(new_amount)
+                except ValueError:
+                    print("Invalid amount, keeping original")
+            
+            # Edit description
+            if edit_choice in ["2", "4"]:
+                new_description = input(f"Enter new description (current: {expense['description']}): ")
+                if new_description.strip():
+                    expense['description'] = new_description
+            
+            # Edit category
+            if edit_choice in ["3", "4"]:
+                print(f"\nCurrent category: {expense['category']}")
+                new_category = get_category()
+                expense['category'] = new_category
+            
+            # Save changes
+            if save_expenses(expenses):
+                print(f"✓ Expense updated successfully!")
+                date_str = expense['date'].strftime("%Y-%m-%d %H:%M")
+                print(f"   ${expense['amount']:.2f} - {expense['description']} [{expense['category']}] ({date_str})")
+            else:
+                print("Error: Failed to save changes")
         else:
             print(f"Invalid number. Please enter 1-{len(expenses)}")
     except ValueError:
@@ -122,10 +199,11 @@ def main():
         print("2. View all expenses")
         print("3. View expenses by category")
         print("4. View total")
-        print("5. Delete an expense")  # NEW option
-        print("6. Exit")
+        print("5. Delete an expense")
+        print("6. Edit an expense")  # NEW option
+        print("7. Exit")
         
-        choice = input("\nEnter your choice (1-6): ")
+        choice = input("\nEnter your choice (1-7): ")
         
         if choice == "1":
             # Add expense
@@ -205,10 +283,14 @@ def main():
                         print(f"  {category}: ${cat_total:.2f} ({percentage:.1f}%)")
         
         elif choice == "5":
-            # NEW: Delete expense
+            # Delete expense
             expenses = delete_expense(expenses)
-            
+        
         elif choice == "6":
+            # NEW: Edit expense
+            expenses = edit_expense(expenses)
+            
+        elif choice == "7":
             print("\nGoodbye! 👋")
             break
         else:

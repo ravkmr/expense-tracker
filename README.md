@@ -3,6 +3,7 @@ A simple Python project to track daily expenses. Built as part of my Python lear
 
 Current Features
 Add expenses with amount, description, and category
+Edit expenses - modify amount, description, or category
 Delete expenses with confirmation
 Data persistence: Expenses saved to CSV file automatically
 Auto-load: Previous expenses load when program starts
@@ -29,5 +30,6 @@ Day 1: Created basic expense tracker with add, view, and total features
 Day 2: Added automatic date and time tracking for each expense
 Day 3: Added expense categories, filtering, and category breakdown with percentages
 Day 4: Implemented CSV file storage for data persistence
+Day 5: Added delete expense functionality
 Started: [Today's Date]
 
