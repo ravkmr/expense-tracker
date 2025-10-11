@@ -1,12 +1,33 @@
-# expense_tracker.py - Day 7
-# Added date range filtering
+# expense_tracker.py - Day 8
+# Migrated from CSV to SQLite database for better performance and scalability
 
-from datetime import datetime, timedelta  # NEW: Added timedelta
-import csv
+from datetime import datetime, timedelta
+import sqlite3  # NEW: SQLite database module
 import os
 
 CATEGORIES = ["Food", "Transport", "Entertainment", "Shopping", "Bills", "Other"]
-CSV_FILE = "expenses.csv"
+DB_FILE = "expenses.db"  # NEW: Database file instead of CSV
+
+# NEW: Initialize database and create table
+def init_database():
+    """Create database and expenses table if they don't exist"""
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    # Create expenses table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS expenses (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            amount REAL NOT NULL,
+            description TEXT NOT NULL,
+            category TEXT NOT NULL,
+            date TEXT NOT NULL
+        )
+    ''')
+    
+    conn.commit()
+    conn.close()
+    print("✓ Database initialized")
 
 def display_categories():
     """Display available categories"""
@@ -28,49 +49,75 @@ def get_category():
         except ValueError:
             print("Please enter a valid number")
 
+# NEW: Load expenses from database
 def load_expenses():
-    """Load expenses from CSV file"""
+    """Load all expenses from database"""
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    cursor.execute('SELECT id, amount, description, category, date FROM expenses ORDER BY date DESC')
+    rows = cursor.fetchall()
+    
     expenses = []
+    for row in rows:
+        expense = {
+            "id": row[0],
+            "amount": row[1],
+            "description": row[2],
+            "category": row[3],
+            "date": datetime.strptime(row[4], "%Y-%m-%d %H:%M:%S")
+        }
+        expenses.append(expense)
     
-    if not os.path.exists(CSV_FILE):
-        return expenses
+    conn.close()
     
-    try:
-        with open(CSV_FILE, 'r', newline='', encoding='utf-8') as file:
-            reader = csv.DictReader(file)
-            for row in reader:
-                expense = {
-                    "amount": float(row['amount']),
-                    "description": row['description'],
-                    "category": row['category'],
-                    "date": datetime.strptime(row['date'], "%Y-%m-%d %H:%M:%S")
-                }
-                expenses.append(expense)
-        print(f"✓ Loaded {len(expenses)} expenses from file")
-    except Exception as e:
-        print(f"Error loading expenses: {e}")
+    if len(expenses) > 0:
+        print(f"✓ Loaded {len(expenses)} expenses from database")
     
     return expenses
 
-def save_expenses(expenses):
-    """Save expenses to CSV file"""
-    try:
-        with open(CSV_FILE, 'w', newline='', encoding='utf-8') as file:
-            fieldnames = ['amount', 'description', 'category', 'date']
-            writer = csv.DictWriter(file, fieldnames=fieldnames)
-            
-            writer.writeheader()
-            for expense in expenses:
-                writer.writerow({
-                    'amount': expense['amount'],
-                    'description': expense['description'],
-                    'category': expense['category'],
-                    'date': expense['date'].strftime("%Y-%m-%d %H:%M:%S")
-                })
-        return True
-    except Exception as e:
-        print(f"Error saving expenses: {e}")
-        return False
+# NEW: Add expense to database
+def add_expense_to_db(amount, description, category, date):
+    """Add a new expense to the database"""
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        INSERT INTO expenses (amount, description, category, date)
+        VALUES (?, ?, ?, ?)
+    ''', (amount, description, category, date.strftime("%Y-%m-%d %H:%M:%S")))
+    
+    conn.commit()
+    expense_id = cursor.lastrowid
+    conn.close()
+    
+    return expense_id
+
+# NEW: Delete expense from database
+def delete_expense_from_db(expense_id):
+    """Delete an expense from the database"""
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    cursor.execute('DELETE FROM expenses WHERE id = ?', (expense_id,))
+    
+    conn.commit()
+    conn.close()
+
+# NEW: Update expense in database
+def update_expense_in_db(expense_id, amount, description, category):
+    """Update an expense in the database"""
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        UPDATE expenses 
+        SET amount = ?, description = ?, category = ?
+        WHERE id = ?
+    ''', (amount, description, category, expense_id))
+    
+    conn.commit()
+    conn.close()
 
 def delete_expense(expenses):
     """Delete an expense from the list"""
@@ -93,12 +140,14 @@ def delete_expense(expenses):
         
         if 1 <= choice <= len(expenses):
             deleted = expenses[choice - 1]
+            
+            # Delete from database
+            delete_expense_from_db(deleted['id'])
+            
+            # Remove from list
             expenses.pop(choice - 1)
             
-            if save_expenses(expenses):
-                print(f"✓ Deleted: ${deleted['amount']:.2f} - {deleted['description']}")
-            else:
-                print("Error: Failed to save after deletion")
+            print(f"✓ Deleted: ${deleted['amount']:.2f} - {deleted['description']}")
         else:
             print(f"Invalid number. Please enter 1-{len(expenses)}")
     except ValueError:
@@ -148,30 +197,39 @@ def edit_expense(expenses):
                 print("Edit cancelled")
                 return expenses
             
+            # Keep current values
+            new_amount = expense['amount']
+            new_description = expense['description']
+            new_category = expense['category']
+            
             if edit_choice in ["1", "4"]:
                 try:
-                    new_amount = input(f"Enter new amount (current: ${expense['amount']:.2f}): $")
-                    if new_amount.strip():
-                        expense['amount'] = float(new_amount)
+                    amount_input = input(f"Enter new amount (current: ${expense['amount']:.2f}): $")
+                    if amount_input.strip():
+                        new_amount = float(amount_input)
                 except ValueError:
                     print("Invalid amount, keeping original")
             
             if edit_choice in ["2", "4"]:
-                new_description = input(f"Enter new description (current: {expense['description']}): ")
-                if new_description.strip():
-                    expense['description'] = new_description
+                desc_input = input(f"Enter new description (current: {expense['description']}): ")
+                if desc_input.strip():
+                    new_description = desc_input
             
             if edit_choice in ["3", "4"]:
                 print(f"\nCurrent category: {expense['category']}")
                 new_category = get_category()
-                expense['category'] = new_category
             
-            if save_expenses(expenses):
-                print(f"✓ Expense updated successfully!")
-                date_str = expense['date'].strftime("%Y-%m-%d %H:%M")
-                print(f"   ${expense['amount']:.2f} - {expense['description']} [{expense['category']}] ({date_str})")
-            else:
-                print("Error: Failed to save changes")
+            # Update in database
+            update_expense_in_db(expense['id'], new_amount, new_description, new_category)
+            
+            # Update in memory
+            expense['amount'] = new_amount
+            expense['description'] = new_description
+            expense['category'] = new_category
+            
+            print(f"✓ Expense updated successfully!")
+            date_str = expense['date'].strftime("%Y-%m-%d %H:%M")
+            print(f"   ${expense['amount']:.2f} - {expense['description']} [{expense['category']}] ({date_str})")
         else:
             print(f"Invalid number. Please enter 1-{len(expenses)}")
     except ValueError:
@@ -179,7 +237,6 @@ def edit_expense(expenses):
     
     return expenses
 
-# NEW: Function to filter expenses by date range
 def view_expenses_by_date(expenses):
     """View expenses filtered by date range"""
     if len(expenses) == 0:
@@ -201,25 +258,21 @@ def view_expenses_by_date(expenses):
     title = ""
     
     if choice == "1":
-        # Last 7 days
         start_date = now - timedelta(days=7)
         filtered = [e for e in expenses if e['date'] >= start_date]
         title = "Last 7 Days"
         
     elif choice == "2":
-        # Last 30 days
         start_date = now - timedelta(days=30)
         filtered = [e for e in expenses if e['date'] >= start_date]
         title = "Last 30 Days"
         
     elif choice == "3":
-        # This month
         start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         filtered = [e for e in expenses if e['date'] >= start_date]
         title = "This Month"
         
     elif choice == "4":
-        # Custom date range
         try:
             print("\nEnter start date (YYYY-MM-DD):")
             start_input = input("Start date: ")
@@ -228,7 +281,7 @@ def view_expenses_by_date(expenses):
             print("Enter end date (YYYY-MM-DD):")
             end_input = input("End date: ")
             end_date = datetime.strptime(end_input, "%Y-%m-%d")
-            end_date = end_date.replace(hour=23, minute=59, second=59)  # End of day
+            end_date = end_date.replace(hour=23, minute=59, second=59)
             
             if start_date > end_date:
                 print("Error: Start date must be before end date!")
@@ -247,7 +300,6 @@ def view_expenses_by_date(expenses):
         print("Invalid choice")
         return
     
-    # Display filtered expenses
     if len(filtered) == 0:
         print(f"\nNo expenses found for: {title}")
     else:
@@ -261,7 +313,6 @@ def view_expenses_by_date(expenses):
         
         print(f"\nTotal for {title}: ${total:.2f}")
         
-        # Category breakdown for filtered expenses
         print("\nCategory Breakdown:")
         for category in CATEGORIES:
             cat_expenses = [e for e in filtered if e['category'] == category]
@@ -271,6 +322,9 @@ def view_expenses_by_date(expenses):
                 print(f"  {category}: ${cat_total:.2f} ({percentage:.1f}%)")
 
 def main():
+    # NEW: Initialize database first
+    init_database()
+    
     expenses = load_expenses()
     
     print("=== Welcome to Expense Tracker ===")
@@ -282,7 +336,7 @@ def main():
         print("1. Add an expense")
         print("2. View all expenses")
         print("3. View expenses by category")
-        print("4. View expenses by date range")  # NEW option
+        print("4. View expenses by date range")
         print("5. View total")
         print("6. Delete an expense")
         print("7. Edit an expense")
@@ -298,19 +352,21 @@ def main():
             
             current_date = datetime.now()
             
+            # Add to database
+            expense_id = add_expense_to_db(amount, description, category, current_date)
+            
+            # Add to memory list
             expense = {
+                "id": expense_id,
                 "amount": amount,
                 "description": description,
                 "category": category,
                 "date": current_date
             }
-            expenses.append(expense)
+            expenses.insert(0, expense)  # Insert at beginning (most recent first)
             
-            if save_expenses(expenses):
-                formatted_date = current_date.strftime("%Y-%m-%d %H:%M")
-                print(f"✓ Added and saved: ${amount} - {description} [{category}] on {formatted_date}")
-            else:
-                print("✓ Added but failed to save to file")
+            formatted_date = current_date.strftime("%Y-%m-%d %H:%M")
+            print(f"✓ Added and saved: ${amount} - {description} [{category}] on {formatted_date}")
             
         elif choice == "2":
             # View all expenses
@@ -352,7 +408,7 @@ def main():
                     print("Please enter a valid number")
         
         elif choice == "4":
-            # NEW: View expenses by date range
+            # View expenses by date range
             view_expenses_by_date(expenses)
                     
         elif choice == "5":

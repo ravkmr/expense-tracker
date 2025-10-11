@@ -6,8 +6,8 @@ A simple Python project to track daily expenses. Built as part of my Python lear
 - Add expenses with amount, description, and category
 - Edit expenses - modify amount, description, or category
 - Delete expenses with confirmation
-- **Date range filtering**: View last 7 days, last 30 days, this month, or custom range
-- Data persistence: Expenses saved to CSV file automatically
+- Date range filtering: View last 7 days, last 30 days, this month, or custom range
+- **SQLite database storage** for better performance and scalability
 - Auto-load: Previous expenses load when program starts
 - 6 categories: Food, Transport, Entertainment, Shopping, Bills, Other
 - Automatic date/time tracking for each expense
@@ -37,6 +37,7 @@ Building this project over 3-4 months to learn:
 - **Day 4**: Implemented CSV file storage for data persistence
 - **Day 5**: Added delete expense functionality
 - **Day 6**: Added edit expense functionality with selective field updates
+- **Day 7**: Implemented date range filtering (last 7/30 days, this month, custom range)
 
 ---
 Started: [Today's Date]
