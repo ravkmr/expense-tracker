@@ -1,7 +1,7 @@
-# expense_tracker.py - Day 6
-# Added edit expense functionality
+# expense_tracker.py - Day 7
+# Added date range filtering
 
-from datetime import datetime
+from datetime import datetime, timedelta  # NEW: Added timedelta
 import csv
 import os
 
@@ -106,14 +106,12 @@ def delete_expense(expenses):
     
     return expenses
 
-# NEW: Function to edit an expense
 def edit_expense(expenses):
     """Edit an existing expense"""
     if len(expenses) == 0:
         print("\nNo expenses to edit!")
         return expenses
     
-    # Display all expenses
     print("\n" + "="*40)
     print("=== Select Expense to Edit ===")
     for i, expense in enumerate(expenses, 1):
@@ -130,7 +128,6 @@ def edit_expense(expenses):
         if 1 <= choice <= len(expenses):
             expense = expenses[choice - 1]
             
-            # Show current values
             print("\n" + "="*40)
             print("=== Current Expense Details ===")
             print(f"Amount: ${expense['amount']:.2f}")
@@ -151,28 +148,24 @@ def edit_expense(expenses):
                 print("Edit cancelled")
                 return expenses
             
-            # Edit amount
             if edit_choice in ["1", "4"]:
                 try:
                     new_amount = input(f"Enter new amount (current: ${expense['amount']:.2f}): $")
-                    if new_amount.strip():  # Only update if user entered something
+                    if new_amount.strip():
                         expense['amount'] = float(new_amount)
                 except ValueError:
                     print("Invalid amount, keeping original")
             
-            # Edit description
             if edit_choice in ["2", "4"]:
                 new_description = input(f"Enter new description (current: {expense['description']}): ")
                 if new_description.strip():
                     expense['description'] = new_description
             
-            # Edit category
             if edit_choice in ["3", "4"]:
                 print(f"\nCurrent category: {expense['category']}")
                 new_category = get_category()
                 expense['category'] = new_category
             
-            # Save changes
             if save_expenses(expenses):
                 print(f"✓ Expense updated successfully!")
                 date_str = expense['date'].strftime("%Y-%m-%d %H:%M")
@@ -186,6 +179,97 @@ def edit_expense(expenses):
     
     return expenses
 
+# NEW: Function to filter expenses by date range
+def view_expenses_by_date(expenses):
+    """View expenses filtered by date range"""
+    if len(expenses) == 0:
+        print("\nNo expenses yet!")
+        return
+    
+    print("\n" + "="*40)
+    print("=== Date Range Filter ===")
+    print("1. Last 7 days")
+    print("2. Last 30 days")
+    print("3. This month")
+    print("4. Custom date range")
+    print("0. Cancel")
+    
+    choice = input("\nEnter your choice (0-4): ")
+    
+    now = datetime.now()
+    filtered = []
+    title = ""
+    
+    if choice == "1":
+        # Last 7 days
+        start_date = now - timedelta(days=7)
+        filtered = [e for e in expenses if e['date'] >= start_date]
+        title = "Last 7 Days"
+        
+    elif choice == "2":
+        # Last 30 days
+        start_date = now - timedelta(days=30)
+        filtered = [e for e in expenses if e['date'] >= start_date]
+        title = "Last 30 Days"
+        
+    elif choice == "3":
+        # This month
+        start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        filtered = [e for e in expenses if e['date'] >= start_date]
+        title = "This Month"
+        
+    elif choice == "4":
+        # Custom date range
+        try:
+            print("\nEnter start date (YYYY-MM-DD):")
+            start_input = input("Start date: ")
+            start_date = datetime.strptime(start_input, "%Y-%m-%d")
+            
+            print("Enter end date (YYYY-MM-DD):")
+            end_input = input("End date: ")
+            end_date = datetime.strptime(end_input, "%Y-%m-%d")
+            end_date = end_date.replace(hour=23, minute=59, second=59)  # End of day
+            
+            if start_date > end_date:
+                print("Error: Start date must be before end date!")
+                return
+            
+            filtered = [e for e in expenses if start_date <= e['date'] <= end_date]
+            title = f"From {start_input} to {end_input}"
+        except ValueError:
+            print("Invalid date format. Please use YYYY-MM-DD (e.g., 2025-10-01)")
+            return
+    
+    elif choice == "0":
+        print("Cancelled")
+        return
+    else:
+        print("Invalid choice")
+        return
+    
+    # Display filtered expenses
+    if len(filtered) == 0:
+        print(f"\nNo expenses found for: {title}")
+    else:
+        print("\n" + "="*40)
+        print(f"=== Expenses: {title} ===")
+        total = 0
+        for i, expense in enumerate(filtered, 1):
+            date_str = expense['date'].strftime("%Y-%m-%d %H:%M")
+            print(f"{i}. ${expense['amount']:.2f} - {expense['description']} [{expense['category']}] ({date_str})")
+            total += expense['amount']
+        
+        print(f"\nTotal for {title}: ${total:.2f}")
+        
+        # Category breakdown for filtered expenses
+        print("\nCategory Breakdown:")
+        for category in CATEGORIES:
+            cat_expenses = [e for e in filtered if e['category'] == category]
+            if len(cat_expenses) > 0:
+                cat_total = sum(e['amount'] for e in cat_expenses)
+                percentage = (cat_total / total) * 100
+                print(f"  {category}: ${cat_total:.2f} ({percentage:.1f}%)")
+
 def main():
     expenses = load_expenses()
     
@@ -198,12 +282,13 @@ def main():
         print("1. Add an expense")
         print("2. View all expenses")
         print("3. View expenses by category")
-        print("4. View total")
-        print("5. Delete an expense")
-        print("6. Edit an expense")  # NEW option
-        print("7. Exit")
+        print("4. View expenses by date range")  # NEW option
+        print("5. View total")
+        print("6. Delete an expense")
+        print("7. Edit an expense")
+        print("8. Exit")
         
-        choice = input("\nEnter your choice (1-7): ")
+        choice = input("\nEnter your choice (1-8): ")
         
         if choice == "1":
             # Add expense
@@ -265,8 +350,12 @@ def main():
                         print(f"Please enter a number between 1 and {len(CATEGORIES)}")
                 except ValueError:
                     print("Please enter a valid number")
-                    
+        
         elif choice == "4":
+            # NEW: View expenses by date range
+            view_expenses_by_date(expenses)
+                    
+        elif choice == "5":
             # View total
             if len(expenses) == 0:
                 print("\nNo expenses yet!")
@@ -282,15 +371,15 @@ def main():
                         percentage = (cat_total / total) * 100
                         print(f"  {category}: ${cat_total:.2f} ({percentage:.1f}%)")
         
-        elif choice == "5":
+        elif choice == "6":
             # Delete expense
             expenses = delete_expense(expenses)
         
-        elif choice == "6":
-            # NEW: Edit expense
+        elif choice == "7":
+            # Edit expense
             expenses = edit_expense(expenses)
             
-        elif choice == "7":
+        elif choice == "8":
             print("\nGoodbye! 👋")
             break
         else:
