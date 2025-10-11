@@ -1,12 +1,12 @@
-# expense_tracker.py - Day 4
-# Added CSV file storage for data persistence
+# expense_tracker.py - Day 5
+# Added delete expense functionality
 
 from datetime import datetime
-import csv  # NEW: Import CSV module
-import os   # NEW: Import OS module for file checks
+import csv
+import os
 
 CATEGORIES = ["Food", "Transport", "Entertainment", "Shopping", "Bills", "Other"]
-CSV_FILE = "expenses.csv"  # NEW: Filename for storing data
+CSV_FILE = "expenses.csv"
 
 def display_categories():
     """Display available categories"""
@@ -28,14 +28,12 @@ def get_category():
         except ValueError:
             print("Please enter a valid number")
 
-# NEW: Function to load expenses from CSV file
 def load_expenses():
     """Load expenses from CSV file"""
     expenses = []
     
-    # Check if file exists
     if not os.path.exists(CSV_FILE):
-        return expenses  # Return empty list if no file
+        return expenses
     
     try:
         with open(CSV_FILE, 'r', newline='', encoding='utf-8') as file:
@@ -54,7 +52,6 @@ def load_expenses():
     
     return expenses
 
-# NEW: Function to save expenses to CSV file
 def save_expenses(expenses):
     """Save expenses to CSV file"""
     try:
@@ -62,7 +59,7 @@ def save_expenses(expenses):
             fieldnames = ['amount', 'description', 'category', 'date']
             writer = csv.DictWriter(file, fieldnames=fieldnames)
             
-            writer.writeheader()  # Write column headers
+            writer.writeheader()
             for expense in expenses:
                 writer.writerow({
                     'amount': expense['amount'],
@@ -75,8 +72,44 @@ def save_expenses(expenses):
         print(f"Error saving expenses: {e}")
         return False
 
+# NEW: Function to delete an expense
+def delete_expense(expenses):
+    """Delete an expense from the list"""
+    if len(expenses) == 0:
+        print("\nNo expenses to delete!")
+        return expenses
+    
+    # Display all expenses with numbers
+    print("\n" + "="*40)
+    print("=== Select Expense to Delete ===")
+    for i, expense in enumerate(expenses, 1):
+        date_str = expense['date'].strftime("%Y-%m-%d %H:%M")
+        print(f"{i}. ${expense['amount']:.2f} - {expense['description']} [{expense['category']}] ({date_str})")
+    
+    try:
+        choice = int(input("\nEnter expense number to delete (0 to cancel): "))
+        
+        if choice == 0:
+            print("Delete cancelled")
+            return expenses
+        
+        if 1 <= choice <= len(expenses):
+            deleted = expenses[choice - 1]
+            expenses.pop(choice - 1)  # Remove from list
+            
+            # Save updated list
+            if save_expenses(expenses):
+                print(f"✓ Deleted: ${deleted['amount']:.2f} - {deleted['description']}")
+            else:
+                print("Error: Failed to save after deletion")
+        else:
+            print(f"Invalid number. Please enter 1-{len(expenses)}")
+    except ValueError:
+        print("Please enter a valid number")
+    
+    return expenses
+
 def main():
-    # NEW: Load existing expenses when program starts
     expenses = load_expenses()
     
     print("=== Welcome to Expense Tracker ===")
@@ -89,9 +122,10 @@ def main():
         print("2. View all expenses")
         print("3. View expenses by category")
         print("4. View total")
-        print("5. Exit")
+        print("5. Delete an expense")  # NEW option
+        print("6. Exit")
         
-        choice = input("\nEnter your choice (1-5): ")
+        choice = input("\nEnter your choice (1-6): ")
         
         if choice == "1":
             # Add expense
@@ -109,7 +143,6 @@ def main():
             }
             expenses.append(expense)
             
-            # NEW: Save to file after adding
             if save_expenses(expenses):
                 formatted_date = current_date.strftime("%Y-%m-%d %H:%M")
                 print(f"✓ Added and saved: ${amount} - {description} [{category}] on {formatted_date}")
@@ -170,8 +203,12 @@ def main():
                         cat_total = sum(e['amount'] for e in cat_expenses)
                         percentage = (cat_total / total) * 100
                         print(f"  {category}: ${cat_total:.2f} ({percentage:.1f}%)")
-            
+        
         elif choice == "5":
+            # NEW: Delete expense
+            expenses = delete_expense(expenses)
+            
+        elif choice == "6":
             print("\nGoodbye! 👋")
             break
         else:
