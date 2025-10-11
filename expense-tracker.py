@@ -1,5 +1,5 @@
-# expense_tracker.py - Day 9
-# Added search functionality with advanced SQL queries
+# expense_tracker.py - Day 10
+# Added database optimization with indexes and comprehensive reporting features
 
 from datetime import datetime, timedelta
 import sqlite3
@@ -23,9 +23,22 @@ def init_database():
         )
     ''')
     
+    # NEW: Create indexes for better performance
+    cursor.execute('''
+        CREATE INDEX IF NOT EXISTS idx_date ON expenses(date)
+    ''')
+    
+    cursor.execute('''
+        CREATE INDEX IF NOT EXISTS idx_category ON expenses(category)
+    ''')
+    
+    cursor.execute('''
+        CREATE INDEX IF NOT EXISTS idx_amount ON expenses(amount)
+    ''')
+    
     conn.commit()
     conn.close()
-    print("✓ Database initialized")
+    print("✓ Database initialized with indexes")
 
 def display_categories():
     """Display available categories"""
@@ -113,14 +126,11 @@ def update_expense_in_db(expense_id, amount, description, category):
     conn.commit()
     conn.close()
 
-# NEW: Search expenses in database
 def search_expenses_in_db(search_term):
     """Search expenses by description or category"""
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     
-    # Use LIKE for partial matching, % is wildcard
-    # LOWER() for case-insensitive search
     cursor.execute('''
         SELECT id, amount, description, category, date 
         FROM expenses 
@@ -146,13 +156,11 @@ def search_expenses_in_db(search_term):
     
     return expenses
 
-# NEW: Advanced search with amount range
 def advanced_search(min_amount=None, max_amount=None, category=None, search_term=None):
     """Advanced search with multiple filters"""
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     
-    # Build dynamic query
     query = 'SELECT id, amount, description, category, date FROM expenses WHERE 1=1'
     params = []
     
@@ -191,6 +199,264 @@ def advanced_search(min_amount=None, max_amount=None, category=None, search_term
     conn.close()
     
     return expenses
+
+# NEW: Generate monthly report
+def generate_monthly_report(year, month):
+    """Generate a detailed report for a specific month"""
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    # Date range for the month
+    start_date = f"{year}-{month:02d}-01 00:00:00"
+    
+    # Calculate last day of month
+    if month == 12:
+        end_date = f"{year + 1}-01-01 00:00:00"
+    else:
+        end_date = f"{year}-{month + 1:02d}-01 00:00:00"
+    
+    # Get all expenses for the month
+    cursor.execute('''
+        SELECT category, SUM(amount) as total, COUNT(*) as count, AVG(amount) as average
+        FROM expenses
+        WHERE date >= ? AND date < ?
+        GROUP BY category
+        ORDER BY total DESC
+    ''', (start_date, end_date))
+    
+    category_stats = cursor.fetchall()
+    
+    # Get overall stats
+    cursor.execute('''
+        SELECT 
+            SUM(amount) as total,
+            COUNT(*) as count,
+            AVG(amount) as average,
+            MIN(amount) as minimum,
+            MAX(amount) as maximum
+        FROM expenses
+        WHERE date >= ? AND date < ?
+    ''', (start_date, end_date))
+    
+    overall_stats = cursor.fetchone()
+    
+    conn.close()
+    
+    return category_stats, overall_stats
+
+# NEW: Generate yearly summary
+def generate_yearly_summary(year):
+    """Generate yearly summary with month-by-month breakdown"""
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    monthly_totals = []
+    
+    for month in range(1, 13):
+        start_date = f"{year}-{month:02d}-01 00:00:00"
+        
+        if month == 12:
+            end_date = f"{year + 1}-01-01 00:00:00"
+        else:
+            end_date = f"{year}-{month + 1:02d}-01 00:00:00"
+        
+        cursor.execute('''
+            SELECT SUM(amount), COUNT(*)
+            FROM expenses
+            WHERE date >= ? AND date < ?
+        ''', (start_date, end_date))
+        
+        result = cursor.fetchone()
+        total = result[0] if result[0] else 0
+        count = result[1] if result[1] else 0
+        
+        monthly_totals.append({
+            'month': month,
+            'total': total,
+            'count': count
+        })
+    
+    conn.close()
+    
+    return monthly_totals
+
+# NEW: Get spending insights
+def get_spending_insights():
+    """Get insights about spending patterns"""
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    insights = {}
+    
+    # Most expensive category
+    cursor.execute('''
+        SELECT category, SUM(amount) as total
+        FROM expenses
+        GROUP BY category
+        ORDER BY total DESC
+        LIMIT 1
+    ''')
+    result = cursor.fetchone()
+    if result:
+        insights['highest_category'] = {'category': result[0], 'total': result[1]}
+    
+    # Most frequent category
+    cursor.execute('''
+        SELECT category, COUNT(*) as count
+        FROM expenses
+        GROUP BY category
+        ORDER BY count DESC
+        LIMIT 1
+    ''')
+    result = cursor.fetchone()
+    if result:
+        insights['frequent_category'] = {'category': result[0], 'count': result[1]}
+    
+    # Largest single expense
+    cursor.execute('''
+        SELECT amount, description, category, date
+        FROM expenses
+        ORDER BY amount DESC
+        LIMIT 1
+    ''')
+    result = cursor.fetchone()
+    if result:
+        insights['largest_expense'] = {
+            'amount': result[0],
+            'description': result[1],
+            'category': result[2],
+            'date': result[3]
+        }
+    
+    # Average expense
+    cursor.execute('SELECT AVG(amount) FROM expenses')
+    result = cursor.fetchone()
+    if result and result[0]:
+        insights['average_expense'] = result[0]
+    
+    # Total number of expenses
+    cursor.execute('SELECT COUNT(*) FROM expenses')
+    result = cursor.fetchone()
+    if result:
+        insights['total_count'] = result[0]
+    
+    conn.close()
+    
+    return insights
+
+# NEW: Monthly report menu
+def show_monthly_report():
+    """Display monthly report menu"""
+    try:
+        year = int(input("\nEnter year (e.g., 2025): "))
+        month = int(input("Enter month (1-12): "))
+        
+        if month < 1 or month > 12:
+            print("Invalid month. Please enter 1-12")
+            return
+        
+        category_stats, overall_stats = generate_monthly_report(year, month)
+        
+        month_names = ['', 'January', 'February', 'March', 'April', 'May', 'June',
+                      'July', 'August', 'September', 'October', 'November', 'December']
+        
+        print("\n" + "="*50)
+        print(f"=== Monthly Report: {month_names[month]} {year} ===")
+        print("="*50)
+        
+        if overall_stats[0] is None:
+            print(f"\nNo expenses recorded for {month_names[month]} {year}")
+            return
+        
+        # Overall stats
+        print(f"\n📊 Overall Statistics:")
+        print(f"   Total Spent: ${overall_stats[0]:.2f}")
+        print(f"   Number of Expenses: {overall_stats[1]}")
+        print(f"   Average Expense: ${overall_stats[2]:.2f}")
+        print(f"   Smallest Expense: ${overall_stats[3]:.2f}")
+        print(f"   Largest Expense: ${overall_stats[4]:.2f}")
+        
+        # Category breakdown
+        print(f"\n📈 Category Breakdown:")
+        for cat_stat in category_stats:
+            category, total, count, average = cat_stat
+            percentage = (total / overall_stats[0]) * 100
+            print(f"   {category}:")
+            print(f"      Total: ${total:.2f} ({percentage:.1f}%)")
+            print(f"      Count: {count} expenses")
+            print(f"      Average: ${average:.2f}")
+        
+    except ValueError:
+        print("Invalid input. Please enter valid numbers.")
+
+# NEW: Yearly summary menu
+def show_yearly_summary():
+    """Display yearly summary"""
+    try:
+        year = int(input("\nEnter year (e.g., 2025): "))
+        
+        monthly_totals = generate_yearly_summary(year)
+        
+        print("\n" + "="*50)
+        print(f"=== Yearly Summary: {year} ===")
+        print("="*50)
+        
+        month_names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+        
+        yearly_total = sum(m['total'] for m in monthly_totals)
+        yearly_count = sum(m['count'] for m in monthly_totals)
+        
+        if yearly_total == 0:
+            print(f"\nNo expenses recorded for {year}")
+            return
+        
+        print(f"\n📅 Month-by-Month Breakdown:")
+        print(f"{'Month':<12} {'Total':>12} {'Count':>8} {'% of Year':>12}")
+        print("-" * 50)
+        
+        for i, month_data in enumerate(monthly_totals):
+            if month_data['total'] > 0:
+                percentage = (month_data['total'] / yearly_total) * 100
+                print(f"{month_names[i]:<12} ${month_data['total']:>10.2f} {month_data['count']:>8} {percentage:>11.1f}%")
+        
+        print("-" * 50)
+        print(f"{'TOTAL':<12} ${yearly_total:>10.2f} {yearly_count:>8} {'100.0%':>12}")
+        print(f"\nAverage per month: ${yearly_total / 12:.2f}")
+        
+    except ValueError:
+        print("Invalid input. Please enter a valid year.")
+
+# NEW: Show insights menu
+def show_insights():
+    """Display spending insights"""
+    insights = get_spending_insights()
+    
+    if not insights or insights.get('total_count', 0) == 0:
+        print("\nNo expenses recorded yet. Add some expenses to see insights!")
+        return
+    
+    print("\n" + "="*50)
+    print("=== 💡 Spending Insights ===")
+    print("="*50)
+    
+    print(f"\n📊 General Statistics:")
+    print(f"   Total Expenses Recorded: {insights['total_count']}")
+    print(f"   Average Expense: ${insights['average_expense']:.2f}")
+    
+    if 'highest_category' in insights:
+        print(f"\n💰 Highest Spending Category:")
+        print(f"   {insights['highest_category']['category']}: ${insights['highest_category']['total']:.2f}")
+    
+    if 'frequent_category' in insights:
+        print(f"\n🔄 Most Frequent Category:")
+        print(f"   {insights['frequent_category']['category']}: {insights['frequent_category']['count']} expenses")
+    
+    if 'largest_expense' in insights:
+        print(f"\n🎯 Largest Single Expense:")
+        print(f"   ${insights['largest_expense']['amount']:.2f} - {insights['largest_expense']['description']}")
+        print(f"   Category: {insights['largest_expense']['category']}")
+        print(f"   Date: {insights['largest_expense']['date']}")
 
 def delete_expense(expenses):
     """Delete an expense from the list"""
@@ -305,7 +571,6 @@ def edit_expense(expenses):
     
     return expenses
 
-# NEW: Simple search function
 def search_expenses():
     """Search expenses by keyword"""
     search_term = input("\nEnter search term (description or category): ").strip()
@@ -332,19 +597,16 @@ def search_expenses():
         
         print(f"\nTotal: ${total:.2f}")
 
-# NEW: Advanced search function
 def advanced_search_menu():
     """Advanced search with multiple filters"""
     print("\n" + "="*40)
     print("=== Advanced Search ===")
     
-    # Get filters
     min_amount = None
     max_amount = None
     category = None
     search_term = None
     
-    # Amount range
     amount_filter = input("\nFilter by amount range? (y/n): ").lower()
     if amount_filter == 'y':
         try:
@@ -358,17 +620,14 @@ def advanced_search_menu():
         except ValueError:
             print("Invalid amount, skipping amount filter")
     
-    # Category filter
     cat_filter = input("Filter by category? (y/n): ").lower()
     if cat_filter == 'y':
         category = get_category()
     
-    # Keyword filter
     keyword_filter = input("Search in description? (y/n): ").lower()
     if keyword_filter == 'y':
         search_term = input("Enter keyword: ").strip()
     
-    # Perform search
     results = advanced_search(min_amount, max_amount, category, search_term)
     
     if len(results) == 0:
@@ -486,14 +745,17 @@ def main():
         print("2. View all expenses")
         print("3. View expenses by category")
         print("4. View expenses by date range")
-        print("5. Search expenses")              # NEW option
-        print("6. Advanced search")               # NEW option
-        print("7. View total")
-        print("8. Delete an expense")
-        print("9. Edit an expense")
-        print("10. Exit")
+        print("5. Search expenses")
+        print("6. Advanced search")
+        print("7. Monthly report")               # NEW option
+        print("8. Yearly summary")                # NEW option
+        print("9. Spending insights")             # NEW option
+        print("10. View total")
+        print("11. Delete an expense")
+        print("12. Edit an expense")
+        print("13. Exit")
         
-        choice = input("\nEnter your choice (1-10): ")
+        choice = input("\nEnter your choice (1-13): ")
         
         if choice == "1":
             # Add expense
@@ -561,14 +823,26 @@ def main():
             view_expenses_by_date(expenses)
         
         elif choice == "5":
-            # NEW: Simple search
+            # Simple search
             search_expenses()
         
         elif choice == "6":
-            # NEW: Advanced search
+            # Advanced search
             advanced_search_menu()
-                    
+        
         elif choice == "7":
+            # NEW: Monthly report
+            show_monthly_report()
+        
+        elif choice == "8":
+            # NEW: Yearly summary
+            show_yearly_summary()
+        
+        elif choice == "9":
+            # NEW: Spending insights
+            show_insights()
+                    
+        elif choice == "10":
             # View total
             if len(expenses) == 0:
                 print("\nNo expenses yet!")
@@ -584,15 +858,15 @@ def main():
                         percentage = (cat_total / total) * 100
                         print(f"  {category}: ${cat_total:.2f} ({percentage:.1f}%)")
         
-        elif choice == "8":
+        elif choice == "11":
             # Delete expense
             expenses = delete_expense(expenses)
         
-        elif choice == "9":
+        elif choice == "12":
             # Edit expense
             expenses = edit_expense(expenses)
             
-        elif choice == "10":
+        elif choice == "13":
             print("\nGoodbye! 👋")
             break
         else:
