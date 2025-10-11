@@ -4,7 +4,8 @@
 from datetime import datetime, timedelta
 import sqlite3
 import os
-
+import matplotlib.pyplot as plt
+from pathlib import Path
 CATEGORIES = ["Food", "Transport", "Entertainment", "Shopping", "Bills", "Other"]
 DB_FILE = "expenses.db"
 
@@ -729,6 +730,64 @@ def view_expenses_by_date(expenses):
                 cat_total = sum(e['amount'] for e in cat_expenses)
                 percentage = (cat_total / total) * 100
                 print(f"  {category}: ${cat_total:.2f} ({percentage:.1f}%)")
+def visualize_category_spending():
+    """Generate a bar chart of spending by category"""
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    # Get spending by category
+    cursor.execute('''
+        SELECT category, SUM(amount) as total
+        FROM expenses
+        GROUP BY category
+        HAVING total > 0
+        ORDER BY total DESC
+    ''')
+    
+    results = cursor.fetchall()
+    conn.close()
+    
+    if not results:
+        print("\n❌ No expenses found to visualize.")
+        return
+    
+    # Prepare data for plotting
+    categories = [row[0] for row in results]
+    amounts = [row[1] for row in results]
+    
+    # Create the bar chart
+    plt.figure(figsize=(10, 6))
+    bars = plt.bar(categories, amounts, color='steelblue', edgecolor='navy', linewidth=1.5)
+    
+    # Customize the chart
+    plt.xlabel('Category', fontsize=12, fontweight='bold')
+    plt.ylabel('Total Amount ($)', fontsize=12, fontweight='bold')
+    plt.title('Spending by Category', fontsize=14, fontweight='bold', pad=20)
+    plt.xticks(rotation=45, ha='right')
+    plt.grid(axis='y', alpha=0.3, linestyle='--')
+    
+    # Add value labels on top of bars
+    for bar in bars:
+        height = bar.get_height()
+        plt.text(bar.get_x() + bar.get_width()/2., height,
+                f'${height:.2f}',
+                ha='center', va='bottom', fontsize=10, fontweight='bold')
+    
+    plt.tight_layout()
+    
+    # Create charts directory if it doesn't exist
+    charts_dir = Path('charts')
+    charts_dir.mkdir(exist_ok=True)
+    
+    # Save the chart
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f'charts/category_spending_{timestamp}.png'
+    plt.savefig(filename, dpi=300, bbox_inches='tight')
+    print(f"\n✅ Chart saved as: {filename}")
+    
+    # Display the chart
+    plt.show()
+    print("\n📊 Close the chart window to continue...")
 
 def main():
     init_database()
@@ -753,9 +812,10 @@ def main():
         print("10. View total")
         print("11. Delete an expense")
         print("12. Edit an expense")
-        print("13. Exit")
+        print("13. 📊 Visualize spending by category")
+        print("14. Exit")
         
-        choice = input("\nEnter your choice (1-13): ")
+        choice = input("\nEnter your choice (1-14): ")
         
         if choice == "1":
             # Add expense
@@ -865,8 +925,12 @@ def main():
         elif choice == "12":
             # Edit expense
             expenses = edit_expense(expenses)
-            
+         
         elif choice == "13":
+            # NEW: Visualize category spending
+            visualize_category_spending()
+
+        elif choice == "14":
             print("\nGoodbye! 👋")
             break
         else:

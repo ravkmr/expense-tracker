@@ -40,6 +40,7 @@ Building this project over 3-4 months to learn:
 - **Day 7**: Implemented date range filtering (last 7/30 days, this month, custom range)
 - **Day 8**: Migrated from CSV to SQLite database for better performance and scalability
 - **Day 9**: Added search functionality with simple and advanced search options using SQL queries
+- **Day 10**: Optimized database with indexes, added monthly reports, yearly summaries, and spending insights
 
 ---
 Started: [Today's Date]
