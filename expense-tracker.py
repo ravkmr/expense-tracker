@@ -788,7 +788,294 @@ def visualize_category_spending():
     # Display the chart
     plt.show()
     print("\n📊 Close the chart window to continue...")
-
+def visualize_spending_trends():
+    """Generate line chart showing spending trends over time"""
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    print("\n📊 Spending Trends Visualization")
+    print("1. Daily spending (last 30 days)")
+    print("2. Weekly spending (last 12 weeks)")
+    print("3. Monthly spending (last 12 months)")
+    print("0. Cancel")
+    
+    choice = input("\nSelect view (0-3): ").strip()
+    
+    if choice == "0":
+        conn.close()
+        return
+    
+    if choice == "1":
+        # Daily spending for last 30 days
+        cursor.execute('''
+            SELECT DATE(date) as day, SUM(amount) as total
+            FROM expenses
+            WHERE date >= date('now', '-30 days')
+            GROUP BY DATE(date)
+            ORDER BY day
+        ''')
+        results = cursor.fetchall()
+        title = "Daily Spending (Last 30 Days)"
+        xlabel = "Date"
+        
+    elif choice == "2":
+        # Weekly spending for last 12 weeks
+        cursor.execute('''
+            SELECT 
+                strftime('%Y-W%W', date) as week,
+                SUM(amount) as total
+            FROM expenses
+            WHERE date >= date('now', '-84 days')
+            GROUP BY strftime('%Y-W%W', date)
+            ORDER BY week
+        ''')
+        results = cursor.fetchall()
+        title = "Weekly Spending (Last 12 Weeks)"
+        xlabel = "Week"
+        
+    elif choice == "3":
+        # Monthly spending for last 12 months
+        cursor.execute('''
+            SELECT 
+                strftime('%Y-%m', date) as month,
+                SUM(amount) as total
+            FROM expenses
+            WHERE date >= date('now', '-365 days')
+            GROUP BY strftime('%Y-%m', date)
+            ORDER BY month
+        ''')
+        results = cursor.fetchall()
+        title = "Monthly Spending (Last 12 Months)"
+        xlabel = "Month"
+        
+    else:
+        print("Invalid choice")
+        conn.close()
+        return
+    
+    conn.close()
+    
+    if not results:
+        print(f"\n❌ No data available for {title}")
+        return
+    
+    # Prepare data
+    labels = [row[0] for row in results]
+    amounts = [row[1] for row in results]
+    
+    # Create line chart
+    plt.figure(figsize=(12, 6))
+    plt.plot(labels, amounts, marker='o', linewidth=2, markersize=8, 
+             color='steelblue', markerfacecolor='orange', markeredgecolor='navy')
+    
+    # Customize chart
+    plt.xlabel(xlabel, fontsize=12, fontweight='bold')
+    plt.ylabel('Amount ($)', fontsize=12, fontweight='bold')
+    plt.title(title, fontsize=14, fontweight='bold', pad=20)
+    plt.xticks(rotation=45, ha='right')
+    plt.grid(True, alpha=0.3, linestyle='--')
+    
+    # Add value labels on points
+    for i, (label, amount) in enumerate(zip(labels, amounts)):
+        plt.text(i, amount, f'${amount:.0f}', 
+                ha='center', va='bottom', fontsize=9, fontweight='bold')
+    
+    plt.tight_layout()
+    
+    # Save chart
+    charts_dir = Path('charts')
+    charts_dir.mkdir(exist_ok=True)
+    
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f'charts/spending_trends_{choice}_{timestamp}.png'
+    plt.savefig(filename, dpi=300, bbox_inches='tight')
+    print(f"\n✅ Chart saved as: {filename}")
+    
+    # Display
+    plt.show()
+    print("\n📊 Close the chart window to continue...")
+def visualize_category_trends():
+    """Show spending trends for each category over time"""
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    # Get last 6 months of data by category
+    cursor.execute('''
+        SELECT 
+            strftime('%Y-%m', date) as month,
+            category,
+            SUM(amount) as total
+        FROM expenses
+        WHERE date >= date('now', '-180 days')
+        GROUP BY strftime('%Y-%m', date), category
+        ORDER BY month, category
+    ''')
+    
+    results = cursor.fetchall()
+    conn.close()
+    
+    if not results:
+        print("\n❌ No data available for category trends")
+        return
+    
+    # Organize data by category
+    from collections import defaultdict
+    category_data = defaultdict(lambda: {'months': [], 'amounts': []})
+    all_months = sorted(set(row[0] for row in results))
+    
+    for month, category, amount in results:
+        category_data[category]['months'].append(month)
+        category_data[category]['amounts'].append(amount)
+    
+    # Create multi-line chart
+    plt.figure(figsize=(12, 7))
+    
+    colors = ['steelblue', 'orange', 'green', 'red', 'purple', 'brown']
+    
+    for idx, (category, data) in enumerate(category_data.items()):
+        # Create full data with zeros for missing months
+        full_amounts = []
+        for month in all_months:
+            if month in data['months']:
+                month_idx = data['months'].index(month)
+                full_amounts.append(data['amounts'][month_idx])
+            else:
+                full_amounts.append(0)
+        
+        plt.plot(all_months, full_amounts, marker='o', linewidth=2, 
+                label=category, color=colors[idx % len(colors)])
+    
+    plt.xlabel('Month', fontsize=12, fontweight='bold')
+    plt.ylabel('Amount ($)', fontsize=12, fontweight='bold')
+    plt.title('Spending Trends by Category (Last 6 Months)', fontsize=14, fontweight='bold', pad=20)
+    plt.xticks(rotation=45, ha='right')
+    plt.legend(loc='best', fontsize=10)
+    plt.grid(True, alpha=0.3, linestyle='--')
+    plt.tight_layout()
+    
+    # Save chart
+    charts_dir = Path('charts')
+    charts_dir.mkdir(exist_ok=True)
+    
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f'charts/category_trends_{timestamp}.png'
+    plt.savefig(filename, dpi=300, bbox_inches='tight')
+    print(f"\n✅ Chart saved as: {filename}")
+    
+    plt.show()
+    print("\n📊 Close the chart window to continue...")
+def generate_test_data():
+    """Generate sample expenses for testing visualizations"""
+    print("\n⚠️  WARNING: This will add test data to your database!")
+    print("This creates 60+ sample expenses across 6 months and all categories.")
+    
+    confirm = input("\nDo you want to continue? (yes/no): ").strip().lower()
+    
+    if confirm != 'yes':
+        print("Cancelled.")
+        return
+    
+    import random
+    
+    # Sample data for each category
+    test_data = {
+        "Food": [
+            ("Grocery shopping", 50, 120),
+            ("Restaurant dinner", 30, 80),
+            ("Fast food lunch", 10, 25),
+            ("Coffee shop", 5, 15),
+            ("Bakery items", 8, 20)
+        ],
+        "Transport": [
+            ("Gas/Petrol", 40, 80),
+            ("Uber/Taxi", 15, 40),
+            ("Bus pass", 20, 50),
+            ("Parking fee", 5, 15),
+            ("Auto rickshaw", 10, 30)
+        ],
+        "Entertainment": [
+            ("Movie tickets", 15, 40),
+            ("Concert/Event", 50, 150),
+            ("Streaming subscription", 10, 20),
+            ("Gaming", 20, 60),
+            ("Sports event", 30, 100)
+        ],
+        "Shopping": [
+            ("Clothing", 30, 150),
+            ("Electronics", 100, 500),
+            ("Books", 10, 40),
+            ("Home items", 20, 100),
+            ("Gifts", 25, 80)
+        ],
+        "Bills": [
+            ("Electricity", 50, 120),
+            ("Internet", 30, 80),
+            ("Phone bill", 20, 60),
+            ("Water bill", 15, 40),
+            ("Rent payment", 500, 1000)
+        ],
+        "Other": [
+            ("Medical expenses", 20, 100),
+            ("Personal care", 15, 50),
+            ("Gym membership", 30, 80),
+            ("Insurance", 50, 150),
+            ("Miscellaneous", 10, 50)
+        ]
+    }
+    
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    # Get current date
+    today = datetime.now()
+    
+    # Generate expenses for last 6 months
+    expenses_added = 0
+    
+    for month_offset in range(6):
+        # Calculate date for this month (going backwards)
+        target_month = today - timedelta(days=30 * month_offset)
+        
+        # Generate 10-15 random expenses per month
+        num_expenses = random.randint(10, 15)
+        
+        for _ in range(num_expenses):
+            # Pick random category
+            category = random.choice(CATEGORIES)
+            
+            # Pick random expense type from that category
+            expense_types = test_data[category]
+            description, min_amount, max_amount = random.choice(expense_types)
+            
+            # Random amount within range
+            amount = round(random.uniform(min_amount, max_amount), 2)
+            
+            # Random day in that month
+            day = random.randint(1, 28)
+            hour = random.randint(8, 22)
+            minute = random.randint(0, 59)
+            
+            # Create date
+            expense_date = target_month.replace(day=day, hour=hour, minute=minute, second=0)
+            
+            # Insert into database
+            cursor.execute('''
+                INSERT INTO expenses (amount, description, category, date)
+                VALUES (?, ?, ?, ?)
+            ''', (amount, description, category, expense_date.strftime("%Y-%m-%d %H:%M:%S")))
+            
+            expenses_added += 1
+    
+    conn.commit()
+    conn.close()
+    
+    print(f"\n✅ Successfully added {expenses_added} test expenses!")
+    print("These expenses cover:")
+    print("  • Last 6 months of data")
+    print("  • All 6 categories")
+    print("  • Realistic amounts and descriptions")
+    print("\nNow try the visualization options to see the difference!")
+    print("\n💡 TIP: Compare option 14 (single line) vs option 15 (multiple colored lines)")
 def main():
     init_database()
     
@@ -813,9 +1100,11 @@ def main():
         print("11. Delete an expense")
         print("12. Edit an expense")
         print("13. 📊 Visualize spending by category")
-        print("14. Exit")
-        
-        choice = input("\nEnter your choice (1-14): ")
+        print("14. 📈 Visualize spending trends")
+        print("15. 📉 Visualize category trends")
+        print("16. 🧪 Generate test data (for demos)")
+        print("17. Exit")
+        choice = input("\nEnter your choice (1-17): ")
         
         if choice == "1":
             # Add expense
@@ -929,8 +1218,20 @@ def main():
         elif choice == "13":
             # NEW: Visualize category spending
             visualize_category_spending()
-
+        
         elif choice == "14":
+            # Visualize spending trends
+            visualize_spending_trends()
+        
+        elif choice == "15":
+            # Visualize category trends
+            visualize_category_trends()
+        
+        elif choice == "16":
+            # Generate test data
+            generate_test_data()
+
+        elif choice == "17":
             print("\nGoodbye! 👋")
             break
         else:
