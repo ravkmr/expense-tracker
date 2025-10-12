@@ -1,46 +1,52 @@
-# Expense Tracker
+# 💰 Personal Expense Tracker
 
-A simple Python project to track daily expenses. Built as part of my Python learning journey!
+A comprehensive Python-based expense tracking application with database storage, advanced analytics, and data visualization capabilities.
 
-## Current Features
-- Add expenses with amount, description, and category
-- Edit expenses - modify amount, description, or category
-- Delete expenses with confirmation
-- Date range filtering: View last 7 days, last 30 days, this month, or custom range
-- **SQLite database storage** for better performance and scalability
-- Auto-load: Previous expenses load when program starts
-- 6 categories: Food, Transport, Entertainment, Shopping, Bills, Other
-- Automatic date/time tracking for each expense
-- View all expenses with timestamps and categories
-- Filter expenses by category
-- Calculate total expenses with category breakdown and percentages
-- Input validation for safe user input
-- Simple console interface
+## 🚀 Project Status
 
-## How to Run
-```bash
-python expense_tracker.py
-```
+**Current Phase:** Week 3 - Data Visualization (Days 11-13 Complete)  
+**Total Development Days:** 13  
+**Next Phase:** Report Export & Dashboard (Day 14)
 
-## Learning Goals
-Building this project over 3-4 months to learn:
-- Python basics
-- File handling
-- Databases
-- Data visualization
-- Web development
+## ✨ Features
 
-## Progress Log
-- **Day 1**: Created basic expense tracker with add, view, and total features
-- **Day 2**: Added automatic date and time tracking for each expense
-- **Day 3**: Added expense categories, filtering, and category breakdown with percentages
-- **Day 4**: Implemented CSV file storage for data persistence
-- **Day 5**: Added delete expense functionality
-- **Day 6**: Added edit expense functionality with selective field updates
-- **Day 7**: Implemented date range filtering (last 7/30 days, this month, custom range)
-- **Day 8**: Migrated from CSV to SQLite database for better performance and scalability
-- **Day 9**: Added search functionality with simple and advanced search options using SQL queries
-- **Day 10**: Optimized database with indexes, added monthly reports, yearly summaries, and spending insights
+### Core Functionality
+- ✅ Full CRUD operations (Create, Read, Update, Delete)
+- ✅ SQLite database with performance indexes
+- ✅ 6 expense categories: Food, Transport, Entertainment, Shopping, Bills, Other
+- ✅ Automatic date/time tracking
+- ✅ Input validation and error handling
 
----
-Started: [Today's Date]
+### Search & Filtering
+- ✅ Simple keyword search (description or category)
+- ✅ Advanced multi-filter search (amount range, category, keywords)
+- ✅ Date range filtering (last 7/30 days, this month, custom ranges)
+
+### Analytics & Reports
+- ✅ Monthly reports with aggregation statistics
+- ✅ Yearly summaries with month-by-month breakdown
+- ✅ Spending insights and pattern analysis
+- ✅ Category breakdowns with percentages
+
+### Data Visualization (NEW! 📊)
+- ✅ **Bar Charts:** Spending by category
+- ✅ **Line Charts:** Daily/weekly/monthly spending trends
+- ✅ **Multi-line Charts:** Category trends over time
+- ✅ **Pie Charts:** Category distribution (all time, this month, last 30 days)
+- ✅ **Stacked Bar Charts:** Monthly spending breakdown by category
+- ✅ **Comparison Charts:** This month vs last month analysis
+- ✅ Auto-save charts as high-quality PNG files
+
+### Developer Tools
+- ✅ Test data generator for demonstrations
+- ✅ Git version control with multi-user simulation
+
+## 🛠️ Technical Stack
+
+- **Language:** Python 3.14
+- **Database:** SQLite3 (built-in)
+- **Visualization:** Matplotlib
+- **Storage:** Single `expenses.db` file
+- **Version Control:** Git + GitHub
+
+## 📁 Project Structure

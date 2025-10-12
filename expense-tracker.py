@@ -1076,6 +1076,268 @@ def generate_test_data():
     print("  • Realistic amounts and descriptions")
     print("\nNow try the visualization options to see the difference!")
     print("\n💡 TIP: Compare option 14 (single line) vs option 15 (multiple colored lines)")
+def visualize_category_pie_chart():
+    """Generate pie chart showing category distribution"""
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    print("\n🥧 Category Distribution Pie Chart")
+    print("1. All time")
+    print("2. This month")
+    print("3. Last 30 days")
+    print("0. Cancel")
+    
+    choice = input("\nSelect period (0-3): ").strip()
+    
+    if choice == "0":
+        conn.close()
+        return
+    
+    # Build query based on choice
+    if choice == "1":
+        query = '''
+            SELECT category, SUM(amount) as total
+            FROM expenses
+            GROUP BY category
+            HAVING total > 0
+            ORDER BY total DESC
+        '''
+        title = "Spending by Category (All Time)"
+        
+    elif choice == "2":
+        query = '''
+            SELECT category, SUM(amount) as total
+            FROM expenses
+            WHERE strftime('%Y-%m', date) = strftime('%Y-%m', 'now')
+            GROUP BY category
+            HAVING total > 0
+            ORDER BY total DESC
+        '''
+        title = "Spending by Category (This Month)"
+        
+    elif choice == "3":
+        query = '''
+            SELECT category, SUM(amount) as total
+            FROM expenses
+            WHERE date >= date('now', '-30 days')
+            GROUP BY category
+            HAVING total > 0
+            ORDER BY total DESC
+        '''
+        title = "Spending by Category (Last 30 Days)"
+        
+    else:
+        print("Invalid choice")
+        conn.close()
+        return
+    
+    cursor.execute(query)
+    results = cursor.fetchall()
+    conn.close()
+    
+    if not results:
+        print(f"\n❌ No data available for {title}")
+        return
+    
+    # Prepare data
+    categories = [row[0] for row in results]
+    amounts = [row[1] for row in results]
+    
+    # Create pie chart
+    plt.figure(figsize=(10, 8))
+    
+    # Custom colors
+    colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F']
+    
+    # Create pie chart with percentages
+    wedges, texts, autotexts = plt.pie(amounts, labels=categories, autopct='%1.1f%%',
+                                         startangle=90, colors=colors,
+                                         explode=[0.05] * len(categories),
+                                         shadow=True)
+    
+    # Make percentage text bold and white
+    for autotext in autotexts:
+        autotext.set_color('white')
+        autotext.set_fontweight('bold')
+        autotext.set_fontsize(11)
+    
+    # Make labels bold
+    for text in texts:
+        text.set_fontweight('bold')
+        text.set_fontsize(12)
+    
+    plt.title(title, fontsize=14, fontweight='bold', pad=20)
+    
+    # Add legend with amounts
+    legend_labels = [f'{cat}: ${amt:.2f}' for cat, amt in zip(categories, amounts)]
+    plt.legend(legend_labels, loc='center left', bbox_to_anchor=(1, 0, 0.5, 1))
+    
+    plt.tight_layout()
+    
+    # Save chart
+    charts_dir = Path('charts')
+    charts_dir.mkdir(exist_ok=True)
+    
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f'charts/category_pie_{choice}_{timestamp}.png'
+    plt.savefig(filename, dpi=300, bbox_inches='tight')
+    print(f"\n✅ Chart saved as: {filename}")
+    
+    plt.show()
+    print("\n📊 Close the chart window to continue...")
+
+
+def visualize_stacked_bar_chart():
+    """Generate stacked bar chart showing category spending over months"""
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    # Get last 6 months of data
+    cursor.execute('''
+        SELECT 
+            strftime('%Y-%m', date) as month,
+            category,
+            SUM(amount) as total
+        FROM expenses
+        WHERE date >= date('now', '-180 days')
+        GROUP BY strftime('%Y-%m', date), category
+        ORDER BY month, category
+    ''')
+    
+    results = cursor.fetchall()
+    conn.close()
+    
+    if not results:
+        print("\n❌ No data available for stacked bar chart")
+        return
+    
+    # Organize data
+    from collections import defaultdict
+    months = sorted(set(row[0] for row in results))
+    category_data = defaultdict(lambda: [0] * len(months))
+    
+    for month, category, amount in results:
+        month_idx = months.index(month)
+        category_data[category][month_idx] = amount
+    
+    # Create stacked bar chart
+    plt.figure(figsize=(12, 7))
+    
+    colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F']
+    
+    # Create bars
+    bottom = [0] * len(months)
+    
+    for idx, category in enumerate(CATEGORIES):
+        if category in category_data:
+            plt.bar(months, category_data[category], bottom=bottom,
+                   label=category, color=colors[idx % len(colors)])
+            # Update bottom for stacking
+            bottom = [b + v for b, v in zip(bottom, category_data[category])]
+    
+    plt.xlabel('Month', fontsize=12, fontweight='bold')
+    plt.ylabel('Amount ($)', fontsize=12, fontweight='bold')
+    plt.title('Monthly Spending by Category (Stacked)', fontsize=14, fontweight='bold', pad=20)
+    plt.xticks(rotation=45, ha='right')
+    plt.legend(loc='upper left', fontsize=10)
+    plt.grid(axis='y', alpha=0.3, linestyle='--')
+    plt.tight_layout()
+    
+    # Save chart
+    charts_dir = Path('charts')
+    charts_dir.mkdir(exist_ok=True)
+    
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f'charts/stacked_bar_{timestamp}.png'
+    plt.savefig(filename, dpi=300, bbox_inches='tight')
+    print(f"\n✅ Chart saved as: {filename}")
+    
+    plt.show()
+    print("\n📊 Close the chart window to continue...")
+
+
+def visualize_comparison_chart():
+    """Compare this month vs last month spending"""
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    # This month
+    cursor.execute('''
+        SELECT category, SUM(amount) as total
+        FROM expenses
+        WHERE strftime('%Y-%m', date) = strftime('%Y-%m', 'now')
+        GROUP BY category
+    ''')
+    this_month = dict(cursor.fetchall())
+    
+    # Last month
+    cursor.execute('''
+        SELECT category, SUM(amount) as total
+        FROM expenses
+        WHERE strftime('%Y-%m', date) = strftime('%Y-%m', 'now', '-1 month')
+        GROUP BY category
+    ''')
+    last_month = dict(cursor.fetchall())
+    
+    conn.close()
+    
+    if not this_month and not last_month:
+        print("\n❌ No data available for comparison")
+        return
+    
+    # Prepare data
+    categories = CATEGORIES
+    this_month_values = [this_month.get(cat, 0) for cat in categories]
+    last_month_values = [last_month.get(cat, 0) for cat in categories]
+    
+    # Create grouped bar chart
+    plt.figure(figsize=(12, 7))
+    
+    x = range(len(categories))
+    width = 0.35
+    
+    plt.bar([i - width/2 for i in x], last_month_values, width, 
+            label='Last Month', color='lightblue', edgecolor='navy')
+    plt.bar([i + width/2 for i in x], this_month_values, width,
+            label='This Month', color='steelblue', edgecolor='navy')
+    
+    plt.xlabel('Category', fontsize=12, fontweight='bold')
+    plt.ylabel('Amount ($)', fontsize=12, fontweight='bold')
+    plt.title('This Month vs Last Month Comparison', fontsize=14, fontweight='bold', pad=20)
+    plt.xticks(x, categories, rotation=45, ha='right')
+    plt.legend()
+    plt.grid(axis='y', alpha=0.3, linestyle='--')
+    plt.tight_layout()
+    
+    # Save chart
+    charts_dir = Path('charts')
+    charts_dir.mkdir(exist_ok=True)
+    
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f'charts/comparison_{timestamp}.png'
+    plt.savefig(filename, dpi=300, bbox_inches='tight')
+    print(f"\n✅ Chart saved as: {filename}")
+    
+    # Show summary
+    this_total = sum(this_month_values)
+    last_total = sum(last_month_values)
+    
+    print(f"\n📊 Summary:")
+    print(f"   Last Month Total: ${last_total:.2f}")
+    print(f"   This Month Total: ${this_total:.2f}")
+    
+    if last_total > 0:
+        change = ((this_total - last_total) / last_total) * 100
+        if change > 0:
+            print(f"   Change: ⬆️ +{change:.1f}% (increased)")
+        elif change < 0:
+            print(f"   Change: ⬇️ {change:.1f}% (decreased)")
+        else:
+            print(f"   Change: ➡️ No change")
+    
+    plt.show()
+    print("\n📊 Close the chart window to continue...")
+
 def main():
     init_database()
     
@@ -1102,9 +1364,12 @@ def main():
         print("13. 📊 Visualize spending by category")
         print("14. 📈 Visualize spending trends")
         print("15. 📉 Visualize category trends")
-        print("16. 🧪 Generate test data (for demos)")
-        print("17. Exit")
-        choice = input("\nEnter your choice (1-17): ")
+        print("16. 🥧 Pie chart - category distribution")
+        print("17. 📊 Stacked bar chart - monthly breakdown")
+        print("18. 🔄 Compare this month vs last month")
+        print("19. 🧪 Generate test data (for demos)")
+        print("20. Exit")
+        choice = input("\nEnter your choice (1-20): ")
         
         if choice == "1":
             # Add expense
@@ -1228,10 +1493,22 @@ def main():
             visualize_category_trends()
         
         elif choice == "16":
+            # Pie chart
+            visualize_category_pie_chart()
+
+        elif choice == "17":
+            # Stacked bar chart
+            visualize_stacked_bar_chart()
+
+        elif choice == "18":
+            # Comparison chart
+            visualize_comparison_chart()
+
+        elif choice == "19":
             # Generate test data
             generate_test_data()
 
-        elif choice == "17":
+        elif choice == "20":
             print("\nGoodbye! 👋")
             break
         else:
