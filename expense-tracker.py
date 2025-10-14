@@ -6,6 +6,16 @@ import sqlite3
 import os
 import matplotlib.pyplot as plt
 from pathlib import Path
+from reportlab.lib.pagesizes import letter, A4
+from reportlab.lib import colors
+from reportlab.lib.units import inch
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.enums import TA_CENTER, TA_RIGHT
+import openpyxl
+from openpyxl.styles import Font, Alignment, PatternFill
+from openpyxl.chart import BarChart, PieChart, Reference
+
 CATEGORIES = ["Food", "Transport", "Entertainment", "Shopping", "Bills", "Other"]
 DB_FILE = "expenses.db"
 
@@ -1337,7 +1347,430 @@ def visualize_comparison_chart():
     
     plt.show()
     print("\n📊 Close the chart window to continue...")
+def export_to_excel():
+    """Export expenses to Excel with formatting and charts"""
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    print("\n📊 Export to Excel")
+    print("1. All expenses")
+    print("2. This month only")
+    print("3. Last 30 days")
+    print("4. Custom date range")
+    print("0. Cancel")
+    
+    choice = input("\nSelect data to export (0-4): ").strip()
+    
+    if choice == "0":
+        conn.close()
+        return
+    
+    # Build query based on choice
+    if choice == "1":
+        cursor.execute('SELECT * FROM expenses ORDER BY date DESC')
+        filename_suffix = "all"
+        
+    elif choice == "2":
+        cursor.execute('''
+            SELECT * FROM expenses
+            WHERE strftime('%Y-%m', date) = strftime('%Y-%m', 'now')
+            ORDER BY date DESC
+        ''')
+        filename_suffix = "this_month"
+        
+    elif choice == "3":
+        cursor.execute('''
+            SELECT * FROM expenses
+            WHERE date >= date('now', '-30 days')
+            ORDER BY date DESC
+        ''')
+        filename_suffix = "last_30_days"
+        
+    elif choice == "4":
+        try:
+            start_date = input("Enter start date (YYYY-MM-DD): ")
+            end_date = input("Enter end date (YYYY-MM-DD): ")
+            cursor.execute('''
+                SELECT * FROM expenses
+                WHERE date >= ? AND date <= ?
+                ORDER BY date DESC
+            ''', (start_date + ' 00:00:00', end_date + ' 23:59:59'))
+            filename_suffix = f"{start_date}_to_{end_date}"
+        except Exception as e:
+            print(f"Error: {e}")
+            conn.close()
+            return
+    else:
+        print("Invalid choice")
+        conn.close()
+        return
+    
+    results = cursor.fetchall()
+    
+    if not results:
+        print("\n❌ No data to export")
+        conn.close()
+        return
+    
+    # Get category summary
+    cursor.execute('''
+        SELECT category, SUM(amount), COUNT(*), AVG(amount)
+        FROM expenses
+        GROUP BY category
+        ORDER BY SUM(amount) DESC
+    ''')
+    category_summary = cursor.fetchall()
+    
+    conn.close()
+    
+    # Create Excel workbook
+    wb = openpyxl.Workbook()
+    
+    # Sheet 1: All Expenses
+    ws1 = wb.active
+    ws1.title = "Expenses"
+    
+    # Headers
+    headers = ['ID', 'Amount', 'Description', 'Category', 'Date']
+    ws1.append(headers)
+    
+    # Style headers
+    header_fill = PatternFill(start_color='4472C4', end_color='4472C4', fill_type='solid')
+    header_font = Font(bold=True, color='FFFFFF', size=12)
+    
+    for cell in ws1[1]:
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+    
+    # Add data
+    total = 0
+    for row in results:
+        ws1.append(row)
+        total += row[1]
+    
+    # Add total row
+    total_row = ws1.max_row + 2
+    ws1[f'A{total_row}'] = 'TOTAL'
+    ws1[f'A{total_row}'].font = Font(bold=True, size=12)
+    ws1[f'B{total_row}'] = total
+    ws1[f'B{total_row}'].font = Font(bold=True, size=12)
+    ws1[f'B{total_row}'].number_format = '$#,##0.00'
+    
+    # Format amount column
+    for row in range(2, ws1.max_row + 1):
+        ws1[f'B{row}'].number_format = '$#,##0.00'
+    
+    # Adjust column widths
+    ws1.column_dimensions['A'].width = 8
+    ws1.column_dimensions['B'].width = 12
+    ws1.column_dimensions['C'].width = 30
+    ws1.column_dimensions['D'].width = 15
+    ws1.column_dimensions['E'].width = 20
+    
+    # Sheet 2: Category Summary
+    ws2 = wb.create_sheet(title="Summary")
+    
+    # Headers
+    ws2.append(['Category', 'Total Amount', 'Count', 'Average'])
+    
+    for cell in ws2[1]:
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal='center')
+    
+    # Add summary data
+    for row in category_summary:
+        ws2.append(row)
+    
+    # Format
+    for row in range(2, ws2.max_row + 1):
+        ws2[f'B{row}'].number_format = '$#,##0.00'
+        ws2[f'D{row}'].number_format = '$#,##0.00'
+    
+    ws2.column_dimensions['A'].width = 15
+    ws2.column_dimensions['B'].width = 15
+    ws2.column_dimensions['C'].width = 10
+    ws2.column_dimensions['D'].width = 15
+    
+    # Add chart
+    chart = BarChart()
+    chart.title = "Spending by Category"
+    chart.x_axis.title = "Category"
+    chart.y_axis.title = "Amount ($)"
+    
+    data = Reference(ws2, min_col=2, min_row=1, max_row=ws2.max_row)
+    cats = Reference(ws2, min_col=1, min_row=2, max_row=ws2.max_row)
+    
+    chart.add_data(data, titles_from_data=True)
+    chart.set_categories(cats)
+    chart.height = 10
+    chart.width = 20
+    
+    ws2.add_chart(chart, "F2")
+    
+    # Save file
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f'expense_report_{filename_suffix}_{timestamp}.xlsx'
+    
+    wb.save(filename)
+    
+    print(f"\n✅ Excel report saved: {filename}")
+    print(f"   Total expenses exported: {len(results)}")
+    print(f"   Total amount: ${total:.2f}")
 
+
+def export_to_pdf():
+    """Generate PDF report with charts"""
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    print("\n📄 Generate PDF Report")
+    print("1. Monthly report (with charts)")
+    print("2. Category summary report")
+    print("3. Full expense list")
+    print("0. Cancel")
+    
+    choice = input("\nSelect report type (0-3): ").strip()
+    
+    if choice == "0":
+        conn.close()
+        return
+    
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    
+    if choice == "1":
+        # Monthly report
+        year = int(input("Enter year (e.g., 2025): "))
+        month = int(input("Enter month (1-12): "))
+        
+        category_stats, overall_stats = generate_monthly_report(year, month)
+        
+        if overall_stats[0] is None:
+            print("\n❌ No data for this month")
+            conn.close()
+            return
+        
+        filename = f'monthly_report_{year}_{month:02d}_{timestamp}.pdf'
+        
+        # Create PDF
+        doc = SimpleDocTemplate(filename, pagesize=letter)
+        story = []
+        styles = getSampleStyleSheet()
+        
+        # Title
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=24,
+            textColor=colors.HexColor('#1f4788'),
+            spaceAfter=30,
+            alignment=TA_CENTER
+        )
+        
+        month_names = ['', 'January', 'February', 'March', 'April', 'May', 'June',
+                      'July', 'August', 'September', 'October', 'November', 'December']
+        
+        title = Paragraph(f"Monthly Expense Report<br/>{month_names[month]} {year}", title_style)
+        story.append(title)
+        story.append(Spacer(1, 0.3*inch))
+        
+        # Overall statistics
+        data = [
+            ['Metric', 'Value'],
+            ['Total Spent', f'${overall_stats[0]:.2f}'],
+            ['Number of Expenses', str(overall_stats[1])],
+            ['Average Expense', f'${overall_stats[2]:.2f}'],
+            ['Smallest Expense', f'${overall_stats[3]:.2f}'],
+            ['Largest Expense', f'${overall_stats[4]:.2f}']
+        ]
+        
+        table = Table(data, colWidths=[3*inch, 2*inch])
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4472C4')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 12),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+        
+        story.append(table)
+        story.append(Spacer(1, 0.5*inch))
+        
+        # Category breakdown
+        heading = Paragraph("Category Breakdown", styles['Heading2'])
+        story.append(heading)
+        story.append(Spacer(1, 0.2*inch))
+        
+        cat_data = [['Category', 'Total', 'Count', 'Average', '% of Total']]
+        for cat_stat in category_stats:
+            category, total, count, average = cat_stat
+            percentage = (total / overall_stats[0]) * 100
+            cat_data.append([
+                category,
+                f'${total:.2f}',
+                str(count),
+                f'${average:.2f}',
+                f'{percentage:.1f}%'
+            ])
+        
+        cat_table = Table(cat_data, colWidths=[1.5*inch, 1.2*inch, 0.8*inch, 1.2*inch, 1*inch])
+        cat_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4472C4')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.lightgrey),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.lightgrey, colors.white])
+        ]))
+        
+        story.append(cat_table)
+        
+        # Build PDF
+        doc.build(story)
+        
+        print(f"\n✅ PDF report saved: {filename}")
+        
+    elif choice == "2":
+        # Category summary
+        cursor.execute('''
+            SELECT category, SUM(amount), COUNT(*), AVG(amount)
+            FROM expenses
+            GROUP BY category
+            ORDER BY SUM(amount) DESC
+        ''')
+        results = cursor.fetchall()
+        
+        if not results:
+            print("\n❌ No data available")
+            conn.close()
+            return
+        
+        filename = f'category_summary_{timestamp}.pdf'
+        
+        doc = SimpleDocTemplate(filename, pagesize=letter)
+        story = []
+        styles = getSampleStyleSheet()
+        
+        # Title
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=24,
+            textColor=colors.HexColor('#1f4788'),
+            spaceAfter=30,
+            alignment=TA_CENTER
+        )
+        
+        title = Paragraph("Category Summary Report", title_style)
+        story.append(title)
+        story.append(Spacer(1, 0.3*inch))
+        
+        # Data table
+        data = [['Category', 'Total Amount', 'Count', 'Average']]
+        total = 0
+        for row in results:
+            data.append([row[0], f'${row[1]:.2f}', str(row[2]), f'${row[3]:.2f}'])
+            total += row[1]
+        
+        data.append(['TOTAL', f'${total:.2f}', '', ''])
+        
+        table = Table(data, colWidths=[2*inch, 1.5*inch, 1*inch, 1.5*inch])
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4472C4')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 12),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -2), colors.beige),
+            ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#4472C4')),
+            ('TEXTCOLOR', (0, -1), (-1, -1), colors.whitesmoke),
+            ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+        
+        story.append(table)
+        
+        doc.build(story)
+        
+        print(f"\n✅ PDF report saved: {filename}")
+        
+    elif choice == "3":
+        # Full expense list
+        cursor.execute('SELECT * FROM expenses ORDER BY date DESC LIMIT 100')
+        results = cursor.fetchall()
+        
+        if not results:
+            print("\n❌ No expenses to export")
+            conn.close()
+            return
+        
+        filename = f'expense_list_{timestamp}.pdf'
+        
+        doc = SimpleDocTemplate(filename, pagesize=letter)
+        story = []
+        styles = getSampleStyleSheet()
+        
+        # Title
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=24,
+            textColor=colors.HexColor('#1f4788'),
+            spaceAfter=30,
+            alignment=TA_CENTER
+        )
+        
+        title = Paragraph("Expense List Report<br/>(Last 100 expenses)", title_style)
+        story.append(title)
+        story.append(Spacer(1, 0.3*inch))
+        
+        # Data table
+        data = [['ID', 'Amount', 'Description', 'Category', 'Date']]
+        total = 0
+        
+        for row in results[:50]:  # Limit to 50 for PDF space
+            data.append([
+                str(row[0]),
+                f'${row[1]:.2f}',
+                row[2][:30],  # Truncate long descriptions
+                row[3],
+                row[4][:16]  # Date without seconds
+            ])
+            total += row[1]
+        
+        table = Table(data, colWidths=[0.5*inch, 1*inch, 3*inch, 1.2*inch, 1.5*inch])
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4472C4')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (1, -1), 'CENTER'),
+            ('ALIGN', (2, 0), (2, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.lightgrey, colors.white])
+        ]))
+        
+        story.append(table)
+        story.append(Spacer(1, 0.2*inch))
+        
+        note = Paragraph(f"<b>Total shown: ${total:.2f}</b> (First 50 expenses)", styles['Normal'])
+        story.append(note)
+        
+        doc.build(story)
+        
+        print(f"\n✅ PDF report saved: {filename}")
+    
+    conn.close()
 def main():
     init_database()
     
@@ -1367,9 +1800,11 @@ def main():
         print("16. 🥧 Pie chart - category distribution")
         print("17. 📊 Stacked bar chart - monthly breakdown")
         print("18. 🔄 Compare this month vs last month")
-        print("19. 🧪 Generate test data (for demos)")
-        print("20. Exit")
-        choice = input("\nEnter your choice (1-20): ")
+        print("19. 📑 Export to Excel")
+        print("20. 📄 Export to PDF")
+        print("21. 🧪 Generate test data (for demos)")
+        print("22. Exit")
+        choice = input("\nEnter your choice (1-22): ")
         
         if choice == "1":
             # Add expense
@@ -1505,10 +1940,18 @@ def main():
             visualize_comparison_chart()
 
         elif choice == "19":
+            # Export to Excel
+            export_to_excel()
+
+        elif choice == "20":
+            # Export to PDF
+            export_to_pdf()
+
+        elif choice == "21":
             # Generate test data
             generate_test_data()
 
-        elif choice == "20":
+        elif choice == "22":
             print("\nGoodbye! 👋")
             break
         else:
