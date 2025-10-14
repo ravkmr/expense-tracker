@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}Monthly Report - Expense Tracker{% endblock %}
+
+{% block content %}
+<style>
+    .report-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 10px;
+        margin-bottom: 30px;
+        text-align: center;
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 15px;
+        margin: 20px 0;
+    }
+    
+    .stat-box {
+        background: rgba(255,255,255,0.2);
+        padding: 15px;
+        border-radius: 8px;
+        text-align: center;
+    }
+    
+    .stat-value {
+        font-size: 1.8em;
+        font-weight: bold;
+    }
+    
+    .stat-label {
+        font-size: 0.9em;
+        opacity: 0.9;
+    }
+    
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+        background: white;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    
+    th, td {
+        padding: 15px;
+        text-align: left;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    
+    th {
+        background: #2d3748;
+        color: white;
+    }
+</style>
+
+<div class="report-header">
+    <h1>📅 Monthly Report</h1>
+    <h2>{{ month_name }} {{ year }}</h2>
+    
+    {% if overall.total %}
+    <div class="stats-grid">
+        <div class="stat-box">
+            <div class="stat-value">${{ "%.2f"|format(overall.total) }}</div>
+            <div class="stat-label">Total Spent</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-value">{{ overall.count }}</div>
+            <div class="stat-label">Expenses</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-value">${{ "%.2f"|format(overall.average) }}</div>
+            <div class="stat-label">Average</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-value">${{ "%.2f"|format(overall.minimum) }}</div>
+            <div class="stat-label">Minimum</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-value">${{ "%.2f"|format(overall.maximum) }}</div>
+            <div class="stat-label">Maximum</div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{% if category_stats %}
+<h3 style="margin-bottom: 20px; color: #2d3748;">Category Breakdown</h3>
+<table>
+    <thead>
+        <tr>
+            <th>Category</th>
+            <th>Total</th>
+            <th>Count</th>
+            <th>Average</th>
+            <th>% of Total</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for cat in category_stats %}
+        <tr>
+            <td><strong>{{ cat.category }}</strong></td>
+            <td>${{ "%.2f"|format(cat.total) }}</td>
+            <td>{{ cat.count }}</td>
+            <td>${{ "%.2f"|format(cat.average) }}</td>
+            <td>{{ "%.1f"|format((cat.total / overall.total) * 100) }}%</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p style="text-align: center; padding: 50px; color: #718096;">No expenses for this month</p>
+{% endif %}
+
+<div style="margin-top: 30px; text-align: center;">
+    <a href="{{ url_for('reports') }}" class="btn btn-secondary">← Back to Reports</a>
+</div>
+{% endblock %}

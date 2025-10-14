@@ -214,7 +214,135 @@ def api_stats():
         'categories': [dict(row) for row in categories],
         'monthly': [dict(row) for row in monthly]
     })
+@app.route('/reports')
+def reports():
+    """Reports dashboard"""
+    return render_template('reports.html')
 
+@app.route('/reports/monthly')
+def monthly_report():
+    """Monthly report page"""
+    year = request.args.get('year', datetime.now().year, type=int)
+    month = request.args.get('month', datetime.now().month, type=int)
+    
+    conn = get_db_connection()
+    
+    # Date range for the month
+    start_date = f"{year}-{month:02d}-01 00:00:00"
+    
+    if month == 12:
+        end_date = f"{year + 1}-01-01 00:00:00"
+    else:
+        end_date = f"{year}-{month + 1:02d}-01 00:00:00"
+    
+    # Category stats
+    category_stats = conn.execute('''
+        SELECT category, SUM(amount) as total, COUNT(*) as count, AVG(amount) as average
+        FROM expenses
+        WHERE date >= ? AND date < ?
+        GROUP BY category
+        ORDER BY total DESC
+    ''', (start_date, end_date)).fetchall()
+    
+    # Overall stats
+    overall = conn.execute('''
+        SELECT 
+            SUM(amount) as total,
+            COUNT(*) as count,
+            AVG(amount) as average,
+            MIN(amount) as minimum,
+            MAX(amount) as maximum
+        FROM expenses
+        WHERE date >= ? AND date < ?
+    ''', (start_date, end_date)).fetchone()
+    
+    conn.close()
+    
+    month_names = ['', 'January', 'February', 'March', 'April', 'May', 'June',
+                  'July', 'August', 'September', 'October', 'November', 'December']
+    
+    return render_template('monthly_report.html',
+                         year=year,
+                         month=month,
+                         month_name=month_names[month],
+                         category_stats=category_stats,
+                         overall=overall)
+
+@app.route('/reports/category')
+def category_report():
+    """Category analysis page"""
+    conn = get_db_connection()
+    
+    # All time category stats
+    categories = conn.execute('''
+        SELECT 
+            category,
+            SUM(amount) as total,
+            COUNT(*) as count,
+            AVG(amount) as average,
+            MIN(amount) as minimum,
+            MAX(amount) as maximum
+        FROM expenses
+        GROUP BY category
+        ORDER BY total DESC
+    ''').fetchall()
+    
+    # Total for percentage calculation
+    total = conn.execute('SELECT SUM(amount) as total FROM expenses').fetchone()['total']
+    
+    conn.close()
+    
+    return render_template('category_report.html',
+                         categories=categories,
+                         total=total if total else 0)
+
+@app.route('/reports/yearly')
+def yearly_report():
+    """Yearly summary page"""
+    year = request.args.get('year', datetime.now().year, type=int)
+    
+    conn = get_db_connection()
+    
+    monthly_data = []
+    for month in range(1, 13):
+        start_date = f"{year}-{month:02d}-01 00:00:00"
+        
+        if month == 12:
+            end_date = f"{year + 1}-01-01 00:00:00"
+        else:
+            end_date = f"{year}-{month + 1:02d}-01 00:00:00"
+        
+        result = conn.execute('''
+            SELECT SUM(amount) as total, COUNT(*) as count
+            FROM expenses
+            WHERE date >= ? AND date < ?
+        ''', (start_date, end_date)).fetchone()
+        
+        monthly_data.append({
+            'month': month,
+            'total': result['total'] if result['total'] else 0,
+            'count': result['count'] if result['count'] else 0
+        })
+    
+    conn.close()
+    
+    month_names = ['January', 'February', 'March', 'April', 'May', 'June',
+                  'July', 'August', 'September', 'October', 'November', 'December']
+    
+    yearly_total = sum(m['total'] for m in monthly_data)
+    yearly_count = sum(m['count'] for m in monthly_data)
+    
+    return render_template('yearly_report.html',
+                         year=year,
+                         monthly_data=monthly_data,
+                         month_names=month_names,
+                         yearly_total=yearly_total,
+                         yearly_count=yearly_count)
+
+@app.route('/reports/trends')
+def trends_report():
+    """Spending trends page"""
+    return render_template('trends_report.html')
 if __name__ == '__main__':
     init_database()
     print("\n" + "="*50)

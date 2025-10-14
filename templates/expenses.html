@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+
+{% block title %}All Expenses - Expense Tracker{% endblock %}
+
+{% block content %}
+<style>
+    .filter-section {
+        background: #f7fafc;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 30px;
+    }
+    
+    .filter-form {
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+        align-items: end;
+    }
+    
+    .filter-group {
+        flex: 1;
+        min-width: 200px;
+    }
+    
+    .filter-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+        color: #2d3748;
+    }
+    
+    .filter-group input,
+    .filter-group select {
+        width: 100%;
+        padding: 10px;
+        border: 2px solid #e2e8f0;
+        border-radius: 5px;
+        font-size: 1em;
+    }
+    
+    .expense-stats {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        display: flex;
+        justify-content: space-around;
+        text-align: center;
+    }
+    
+    .stat-item {
+        flex: 1;
+    }
+    
+    .stat-item .value {
+        font-size: 2em;
+        font-weight: bold;
+    }
+    
+    .stat-item .label {
+        font-size: 0.9em;
+        opacity: 0.9;
+    }
+    
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    
+    th, td {
+        padding: 15px;
+        text-align: left;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    
+    th {
+        background: #2d3748;
+        color: white;
+        font-weight: bold;
+        text-transform: uppercase;
+        font-size: 0.9em;
+    }
+    
+    tr:hover {
+        background: #f7fafc;
+    }
+    
+    .category-badge {
+        display: inline-block;
+        padding: 5px 15px;
+        border-radius: 20px;
+        font-size: 0.9em;
+        font-weight: bold;
+    }
+    
+    .category-Food { background: #fed7d7; color: #742a2a; }
+    .category-Transport { background: #bee3f8; color: #2c5282; }
+    .category-Entertainment { background: #faf089; color: #744210; }
+    .category-Shopping { background: #e9d8fd; color: #44337a; }
+    .category-Bills { background: #c6f6d5; color: #22543d; }
+    .category-Other { background: #e2e8f0; color: #2d3748; }
+    
+    .actions {
+        display: flex;
+        gap: 10px;
+    }
+    
+    .btn-sm {
+        padding: 5px 12px;
+        font-size: 0.9em;
+    }
+    
+    .no-expenses {
+        text-align: center;
+        padding: 50px;
+        color: #718096;
+        font-size: 1.2em;
+    }
+    
+    .amount-positive {
+        color: #e53e3e;
+        font-weight: bold;
+    }
+</style>
+
+<div class="filter-section">
+    <h3 style="margin-bottom: 15px; color: #2d3748;">🔍 Filter Expenses</h3>
+    <form method="GET" action="{{ url_for('expenses') }}" class="filter-form">
+        <div class="filter-group">
+            <label for="search">Search</label>
+            <input type="text" id="search" name="search" placeholder="Description or category..." value="{{ search_term }}">
+        </div>
+        
+        <div class="filter-group">
+            <label for="category">Category</label>
+            <select id="category" name="category">
+                <option value="">All Categories</option>
+                {% for cat in categories %}
+                <option value="{{ cat }}" {% if cat == selected_category %}selected{% endif %}>{{ cat }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="filter-group" style="flex: 0;">
+            <button type="submit" class="btn btn-primary">🔍 Search</button>
+        </div>
+        
+        <div class="filter-group" style="flex: 0;">
+            <a href="{{ url_for('expenses') }}" class="btn btn-secondary">🔄 Reset</a>
+        </div>
+    </form>
+</div>
+
+{% if expenses %}
+<div class="expense-stats">
+    <div class="stat-item">
+        <div class="value">{{ expenses|length }}</div>
+        <div class="label">Expenses Found</div>
+    </div>
+    <div class="stat-item">
+        <div class="value">${{ "%.2f"|format(expenses|sum(attribute='amount')) }}</div>
+        <div class="label">Total Amount</div>
+    </div>
+    <div class="stat-item">
+        <div class="value">${{ "%.2f"|format((expenses|sum(attribute='amount')) / (expenses|length)) }}</div>
+        <div class="label">Average</div>
+    </div>
+</div>
+
+<table>
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Description</th>
+            <th>Category</th>
+            <th>Amount</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for expense in expenses %}
+        <tr>
+            <td>{{ expense.date[:16] }}</td>
+            <td>{{ expense.description }}</td>
+            <td>
+                <span class="category-badge category-{{ expense.category }}">
+                    {{ expense.category }}
+                </span>
+            </td>
+            <td class="amount-positive">${{ "%.2f"|format(expense.amount) }}</td>
+            <td>
+                <div class="actions">
+                    <a href="{{ url_for('edit_expense', id=expense.id) }}" class="btn btn-primary btn-sm">✏️ Edit</a>
+                    <a href="{{ url_for('delete_expense', id=expense.id) }}" 
+                       class="btn btn-danger btn-sm"
+                       onclick="return confirm('Are you sure you want to delete this expense?')">
+                        🗑️ Delete
+                    </a>
+                </div>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="no-expenses">
+    <p>😔 No expenses found</p>
+    <p style="font-size: 0.9em; margin-top: 10px;">Try adjusting your filters or add a new expense</p>
+    <div style="margin-top: 20px;">
+        <a href="{{ url_for('add_expense') }}" class="btn btn-primary">➕ Add Expense</a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

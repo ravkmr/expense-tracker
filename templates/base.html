@@ -133,13 +133,12 @@
             <h1>💰 Expense Tracker</h1>
             <p>Manage your expenses with ease</p>
         </div>
-        
         <div class="nav">
             <a href="{{ url_for('index') }}" {% if request.endpoint == 'index' %}class="active"{% endif %}>🏠 Dashboard</a>
             <a href="{{ url_for('expenses') }}" {% if request.endpoint == 'expenses' %}class="active"{% endif %}>📋 All Expenses</a>
             <a href="{{ url_for('add_expense') }}" {% if request.endpoint == 'add_expense' %}class="active"{% endif %}>➕ Add Expense</a>
+            <a href="{{ url_for('reports') }}" {% if request.endpoint and 'report' in request.endpoint %}class="active"{% endif %}>📊 Reports</a>
         </div>
-        
         <div class="content">
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
