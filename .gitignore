@@ -3,3 +3,7 @@ expenses.db
 expenses_backup_*.csv
 charts/
 *.png
+*.xlsx
+*.pdf
+__pycache__/
+*.pyc
