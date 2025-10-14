@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}Category Report - Expense Tracker{% endblock %}
+
+{% block content %}
+<style>
+    .report-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 10px;
+        margin-bottom: 30px;
+        text-align: center;
+    }
+    
+    .category-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+    
+    .category-card {
+        background: white;
+        padding: 25px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        border-left: 5px solid #667eea;
+    }
+    
+    .category-card h3 {
+        color: #2d3748;
+        margin-bottom: 15px;
+    }
+    
+    .stat-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px 0;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    
+    .stat-label {
+        color: #718096;
+    }
+    
+    .stat-value {
+        font-weight: bold;
+        color: #2d3748;
+    }
+</style>
+
+<div class="report-header">
+    <h1>🏷️ Category Analysis</h1>
+    <p>Comprehensive breakdown of spending by category</p>
+</div>
+
+{% if categories %}
+<div class="category-grid">
+    {% for cat in categories %}
+    <div class="category-card">
+        <h3>{{ cat.category }}</h3>
+        <div class="stat-row">
+            <span class="stat-label">Total Spent:</span>
+            <span class="stat-value">${{ "%.2f"|format(cat.total) }}</span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">Number of Expenses:</span>
+            <span class="stat-value">{{ cat.count }}</span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">Average Amount:</span>
+            <span class="stat-value">${{ "%.2f"|format(cat.average) }}</span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">Smallest:</span>
+            <span class="stat-value">${{ "%.2f"|format(cat.minimum) }}</span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">Largest:</span>
+            <span class="stat-value">${{ "%.2f"|format(cat.maximum) }}</span>
+        </div>
+        {% if total > 0 %}
+        <div class="stat-row" style="border-bottom: none;">
+            <span class="stat-label">Percentage of Total:</span>
+            <span class="stat-value">{{ "%.1f"|format((cat.total / total) * 100) }}%</span>
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<p style="text-align: center; padding: 50px; color: #718096;">No expense data available</p>
+{% endif %}
+
+<div style="text-align: center; margin-top: 30px;">
+    <a href="{{ url_for('reports') }}" class="btn btn-secondary">← Back to Reports</a>
+</div>
+{% endblock %}

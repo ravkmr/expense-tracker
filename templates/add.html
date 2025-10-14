@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Add Expense - Expense Tracker{% endblock %}
+
+{% block content %}
+<style>
+    .form-container {
+        max-width: 600px;
+        margin: 0 auto;
+        background: #f7fafc;
+        padding: 30px;
+        border-radius: 10px;
+    }
+    
+    .form-group {
+        margin-bottom: 20px;
+    }
+    
+    label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+        color: #2d3748;
+    }
+    
+    input, select, textarea {
+        width: 100%;
+        padding: 10px;
+        border: 2px solid #e2e8f0;
+        border-radius: 5px;
+        font-size: 1em;
+        transition: border 0.3s;
+    }
+    
+    input:focus, select:focus, textarea:focus {
+        outline: none;
+        border-color: #667eea;
+    }
+    
+    .form-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 30px;
+    }
+</style>
+
+<div class="form-container">
+    <h2 style="margin-bottom: 30px; color: #2d3748;">➕ Add New Expense</h2>
+    
+    <form method="POST" action="{{ url_for('add_expense') }}">
+        <div class="form-group">
+            <label for="amount">Amount ($) *</label>
+            <input type="number" id="amount" name="amount" step="0.01" required min="0.01">
+        </div>
+        
+        <div class="form-group">
+            <label for="description">Description *</label>
+            <input type="text" id="description" name="description" required maxlength="200">
+        </div>
+        
+        <div class="form-group">
+            <label for="category">Category *</label>
+            <select id="category" name="category" required>
+                {% for cat in categories %}
+                <option value="{{ cat }}">{{ cat }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="date">Date (optional)</label>
+            <input type="date" id="date" name="date" value="{{ today }}">
+            <small style="color: #718096;">Leave blank to use current date and time</small>
+        </div>
+        
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">💾 Save Expense</button>
+            <a href="{{ url_for('index') }}" class="btn btn-secondary">❌ Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+```
+
+## Step 5: Update .gitignore
+
+Your `.gitignore` should include:
+```
+expenses.db
+*.csv
+expenses_backup_*.csv
+charts/
+*.png
+*.xlsx
+*.pdf
+__pycache__/
+*.pyc

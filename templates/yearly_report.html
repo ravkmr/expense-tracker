@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}Yearly Report - Expense Tracker{% endblock %}
+
+{% block content %}
+<style>
+    .report-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 10px;
+        margin-bottom: 30px;
+        text-align: center;
+    }
+    
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+        background: white;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    
+    th, td {
+        padding: 15px;
+        text-align: left;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    
+    th {
+        background: #2d3748;
+        color: white;
+    }
+    
+    tr:hover {
+        background: #f7fafc;
+    }
+    
+    .total-row {
+        background: #667eea !important;
+        color: white;
+        font-weight: bold;
+    }
+</style>
+
+<div class="report-header">
+    <h1>📆 Yearly Summary {{ year }}</h1>
+    {% if yearly_total > 0 %}
+    <div style="margin-top: 20px;">
+        <div style="font-size: 2.5em; font-weight: bold;">${{ "%.2f"|format(yearly_total) }}</div>
+        <div>Total Spent in {{ year }}</div>
+        <div style="margin-top: 10px;">{{ yearly_count }} expenses recorded</div>
+    </div>
+    {% endif %}
+</div>
+
+{% if yearly_total > 0 %}
+<table>
+    <thead>
+        <tr>
+            <th>Month</th>
+            <th>Total Amount</th>
+            <th>Number of Expenses</th>
+            <th>% of Year</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for month_data in monthly_data %}
+        {% if month_data.total > 0 %}
+        <tr>
+            <td><strong>{{ month_names[month_data.month - 1] }}</strong></td>
+            <td>${{ "%.2f"|format(month_data.total) }}</td>
+            <td>{{ month_data.count }}</td>
+            <td>{{ "%.1f"|format((month_data.total / yearly_total) * 100) }}%</td>
+        </tr>
+        {% endif %}
+        {% endfor %}
+        <tr class="total-row">
+            <td>TOTAL</td>
+            <td>${{ "%.2f"|format(yearly_total) }}</td>
+            <td>{{ yearly_count }}</td>
+            <td>100.0%</td>
+        </tr>
+    </tbody>
+</table>
+
+<p style="margin-top: 20px; text-align: center; color: #718096;">
+    Average per month: ${{ "%.2f"|format(yearly_total / 12) }}
+</p>
+{% else %}
+<p style="text-align: center; padding: 50px; color: #718096;">No expenses for {{ year }}</p>
+{% endif %}
+
+<div style="text-align: center; margin-top: 30px;">
+    <a href="{{ url_for('reports') }}" class="btn btn-secondary">← Back to Reports</a>
+</div>
+{% endblock %}

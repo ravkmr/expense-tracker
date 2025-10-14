@@ -142,8 +142,9 @@ def add_expense():
         
         flash(f'Expense added: ${amount:.2f} - {description}', 'success')
         return redirect(url_for('index'))
-    
-    return render_template('add.html', categories=CATEGORIES)
+    # For GET request, pass today's date
+    today = datetime.now().strftime('%Y-%m-%d')
+    return render_template('add.html', categories=CATEGORIES, today=today)
 
 @app.route('/edit/<int:id>', methods=['GET', 'POST'])
 def edit_expense(id):

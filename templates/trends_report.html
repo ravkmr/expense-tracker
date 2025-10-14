@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}Trends Report - Expense Tracker{% endblock %}
+
+{% block content %}
+<style>
+    .report-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 10px;
+        margin-bottom: 30px;
+        text-align: center;
+    }
+    
+    .chart-container {
+        background: white;
+        padding: 30px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+</style>
+
+<div class="report-header">
+    <h1>📈 Spending Trends</h1>
+    <p>Visualize your spending patterns over time</p>
+</div>
+
+<div class="chart-container">
+    <h3>Monthly Spending Trend (Last 6 Months)</h3>
+    <canvas id="trendChart"></canvas>
+</div>
+
+<div style="text-align: center; margin-top: 30px;">
+    <a href="{{ url_for('reports') }}" class="btn btn-secondary">← Back to Reports</a>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+fetch('/api/stats')
+    .then(response => response.json())
+    .then(data => {
+        const ctx = document.getElementById('trendChart').getContext('2d');
+        
+        const months = data.monthly.map(m => m.month);
+        const amounts = data.monthly.map(m => m.total);
+        
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: months,
+                datasets: [{
+                    label: 'Monthly Spending ($)',
+                    data: amounts,
+                    borderColor: 'rgba(102, 126, 234, 1)',
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        display: true
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '$' + value;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

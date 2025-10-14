@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Reports - Expense Tracker{% endblock %}
+
+{% block content %}
+<style>
+    .report-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+    
+    .report-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 10px;
+        text-align: center;
+        cursor: pointer;
+        transition: transform 0.3s;
+        text-decoration: none;
+        display: block;
+    }
+    
+    .report-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+    }
+    
+    .report-card h3 {
+        font-size: 1.5em;
+        margin-bottom: 10px;
+    }
+    
+    .report-card p {
+        opacity: 0.9;
+    }
+</style>
+
+<h2 style="margin-bottom: 30px; color: #2d3748;">📊 Reports & Analytics</h2>
+
+<div class="report-grid">
+    <div class="report-card" onclick="alert('Monthly report coming soon!')">
+        <h3>📅 Monthly Report</h3>
+        <p>View detailed monthly statistics and breakdown</p>
+    </div>
+    
+    <div class="report-card" onclick="alert('Category report coming soon!')">
+        <h3>🏷️ Category Analysis</h3>
+        <p>Analyze spending patterns by category</p>
+    </div>
+    
+    <div class="report-card" onclick="alert('Yearly report coming soon!')">
+        <h3>📆 Yearly Summary</h3>
+        <p>Annual overview with month-by-month breakdown</p>
+    </div>
+    
+    <div class="report-card" onclick="alert('Trends report coming soon!')">
+        <h3>📈 Spending Trends</h3>
+        <p>Visualize spending trends over time</p>
+    </div>
+</div>
+
+<div style="text-align: center; margin-top: 30px;">
+    <a href="{{ url_for('index') }}" class="btn btn-secondary">← Back to Dashboard</a>
+</div>
+{% endblock %}
