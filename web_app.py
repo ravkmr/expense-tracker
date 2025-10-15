@@ -84,7 +84,8 @@ def index():
                          this_month=this_month,
                          categories=categories,
                          recent_expenses=recent_expenses,
-                         category_list=CATEGORIES)
+                         category_list=CATEGORIES,
+                         datetime=datetime)
 
 @app.route('/expenses')
 def expenses():
@@ -344,6 +345,61 @@ def yearly_report():
 def trends_report():
     """Spending trends page"""
     return render_template('trends_report.html')
+@app.route('/export/csv')
+def export_csv():
+    """Export expenses to CSV"""
+    import csv
+    from io import StringIO
+    from flask import make_response
+    
+    conn = get_db_connection()
+    expenses = conn.execute('SELECT * FROM expenses ORDER BY date DESC').fetchall()
+    conn.close()
+    
+    # Create CSV in memory
+    si = StringIO()
+    writer = csv.writer(si)
+    
+    # Write headers
+    writer.writerow(['ID', 'Amount', 'Description', 'Category', 'Date'])
+    
+    # Write data
+    for expense in expenses:
+        writer.writerow([expense['id'], expense['amount'], expense['description'], 
+                        expense['category'], expense['date']])
+    
+    # Create response
+    output = make_response(si.getvalue())
+    output.headers["Content-Disposition"] = f"attachment; filename=expenses_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+    output.headers["Content-type"] = "text/csv"
+    
+    return output
+
+@app.route('/export/json')
+def export_json():
+    """Export expenses to JSON"""
+    from flask import make_response
+    import json
+    
+    conn = get_db_connection()
+    expenses = conn.execute('SELECT * FROM expenses ORDER BY date DESC').fetchall()
+    conn.close()
+    
+    # Convert to list of dicts
+    expenses_list = [dict(expense) for expense in expenses]
+    
+    # Create JSON response
+    output = make_response(json.dumps(expenses_list, indent=2))
+    output.headers["Content-Disposition"] = f"attachment; filename=expenses_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+    output.headers["Content-type"] = "application/json"
+    
+    return output
+
+@app.route('/about')
+def about():
+    """About page"""
+    return render_template('about.html')
+
 if __name__ == '__main__':
     init_database()
     print("\n" + "="*50)

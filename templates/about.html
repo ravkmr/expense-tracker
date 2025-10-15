@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}About - Expense Tracker{% endblock %}
+
+{% block content %}
+<style>
+    .about-section {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    
+    .feature-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+        margin: 30px 0;
+    }
+    
+    .feature-card {
+        background: #f7fafc;
+        padding: 20px;
+        border-radius: 10px;
+        border-left: 4px solid #667eea;
+    }
+    
+    .feature-card h3 {
+        color: #2d3748;
+        margin-bottom: 10px;
+    }
+    
+    .feature-card p {
+        color: #718096;
+        font-size: 0.95em;
+    }
+    
+    .stat-box {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 10px;
+        text-align: center;
+        margin: 30px 0;
+    }
+    
+    .stat-box h2 {
+        font-size: 3em;
+        margin: 10px 0;
+    }
+</style>
+
+<div class="about-section">
+    <h1 style="text-align: center; color: #2d3748; margin-bottom: 20px;">
+        💰 Personal Expense Tracker
+    </h1>
+    
+    <p style="text-align: center; color: #718096; font-size: 1.1em; margin-bottom: 40px;">
+        A comprehensive expense tracking application built with Python & Flask
+    </p>
+    
+    <div class="stat-box">
+        <div style="font-size: 1.2em; opacity: 0.9;">Development Journey</div>
+        <h2>17 Days</h2>
+        <div>of consistent coding and learning</div>
+    </div>
+    
+    <h2 style="color: #2d3748; margin: 40px 0 20px 0;">✨ Features</h2>
+    
+    <div class="feature-grid">
+        <div class="feature-card">
+            <h3>📊 Full CRUD Operations</h3>
+            <p>Create, Read, Update, and Delete expenses with ease</p>
+        </div>
+        
+        <div class="feature-card">
+            <h3>🔍 Advanced Search</h3>
+            <p>Filter by category, date range, and keywords</p>
+        </div>
+        
+        <div class="feature-card">
+            <h3>📈 Data Visualization</h3>
+            <p>Beautiful charts and graphs using Chart.js</p>
+        </div>
+        
+        <div class="feature-card">
+            <h3>📑 Comprehensive Reports</h3>
+            <p>Monthly, yearly, and category-based reports</p>
+        </div>
+        
+        <div class="feature-card">
+            <h3>💾 Multiple Export Formats</h3>
+            <p>Export data to CSV, JSON, Excel, and PDF</p>
+        </div>
+        
+        <div class="feature-card">
+            <h3>🎨 Modern UI</h3>
+            <p>Clean, responsive design that works everywhere</p>
+        </div>
+    </div>
+    
+    <h2 style="color: #2d3748; margin: 40px 0 20px 0;">🛠️ Technology Stack</h2>
+    
+    <div style="background: #f7fafc; padding: 20px; border-radius: 10px;">
+        <ul style="list-style: none; padding: 0;">
+            <li style="padding: 10px 0; border-bottom: 1px solid #e2e8f0;">
+                <strong>Backend:</strong> Python 3.14, Flask Framework
+            </li>
+            <li style="padding: 10px 0; border-bottom: 1px solid #e2e8f0;">
+                <strong>Database:</strong> SQLite3 with performance indexes
+            </li>
+            <li style="padding: 10px 0; border-bottom: 1px solid #e2e8f0;">
+                <strong>Frontend:</strong> HTML5, CSS3, Jinja2 Templates
+            </li>
+            <li style="padding: 10px 0; border-bottom: 1px solid #e2e8f0;">
+                <strong>Visualization:</strong> Chart.js, Matplotlib
+            </li>
+            <li style="padding: 10px 0; border-bottom: 1px solid #e2e8f0;">
+                <strong>Export:</strong> ReportLab (PDF), OpenPyXL (Excel)
+            </li>
+            <li style="padding: 10px 0;">
+                <strong>Version Control:</strong> Git & GitHub
+            </li>
+        </ul>
+    </div>
+    
+    <div style="text-align: center; margin-top: 50px; padding: 30px; background: #f7fafc; border-radius: 10px;">
+        <h3 style="color: #2d3748; margin-bottom: 15px;">👨‍💻 Developer</h3>
+        <p style="color: #718096;">Built with 💜 by ravkmr</p>
+        <p style="color: #718096; margin-top: 10px;">
+            <a href="https://github.com/ravkmr/expense-tracker" target="_blank" 
+               style="color: #667eea; text-decoration: none; font-weight: bold;">
+                View on GitHub →
+            </a>
+        </p>
+    </div>
+</div>
+{% endblock %}
