@@ -39,11 +39,46 @@
             margin-bottom: 10px;
         }
         
+        .user-info {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            color: white;
+            text-align: right;
+        }
+        
+        .user-info p {
+            margin: 5px 0;
+            font-size: 0.95em;
+        }
+        
+        .logout-btn {
+            display: inline-block;
+            margin-top: 8px;
+            padding: 6px 15px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            border: 1px solid rgba(255,255,255,0.3);
+            transition: all 0.3s;
+            font-size: 0.9em;
+        }
+        
+        .logout-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .header {
+            position: relative;
+        }
+        
         .nav {
             background: #2d3748;
             padding: 0;
             display: flex;
             justify-content: center;
+            flex-wrap: wrap;
         }
         
         .nav a {
@@ -130,9 +165,16 @@
 <body>
     <div class="container">
         <div class="header">
+            <div class="user-info">
+                <p>👤 {{ current_user.username }}</p>
+                <p style="font-size: 0.85em;">{{ current_user.email }}</p>
+                <a href="{{ url_for('logout') }}" class="logout-btn">🚪 Logout</a>
+            </div>
+            
             <h1>💰 Expense Tracker</h1>
             <p>Manage your expenses with ease</p>
         </div>
+        
         <div class="nav">
             <a href="{{ url_for('index') }}" {% if request.endpoint == 'index' %}class="active"{% endif %}>🏠 Dashboard</a>
             <a href="{{ url_for('expenses') }}" {% if request.endpoint == 'expenses' %}class="active"{% endif %}>📋 All Expenses</a>
@@ -140,6 +182,7 @@
             <a href="{{ url_for('reports') }}" {% if request.endpoint and 'report' in request.endpoint %}class="active"{% endif %}>📊 Reports</a>
             <a href="{{ url_for('about') }}" {% if request.endpoint == 'about' %}class="active"{% endif %}>ℹ️ About</a>
         </div>
+        
         <div class="content">
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
