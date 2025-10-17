@@ -7,3 +7,6 @@ charts/
 *.pdf
 __pycache__/
 *.pyc
+.env
+.flaskenv
+venv/

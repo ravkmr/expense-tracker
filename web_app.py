@@ -7,12 +7,17 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
 import sqlite3
 import os
+from dotenv import load_dotenv
 import csv
 import json
 from io import StringIO
 
 app = Flask(__name__)
-app.secret_key = 'your-secret-key-change-this-in-production'
+load_dotenv()
+app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-key')
+
+### Update .gitignore
+
 
 # Flask-Login setup
 login_manager = LoginManager()
@@ -509,12 +514,23 @@ def about():
     return render_template('about.html')
 
 if __name__ == '__main__':
+    import os
+    
+    # Check if running in production
+    is_production = os.environ.get('FLASK_ENV') == 'production'
+    
     print("\n" + "="*50)
     print("🌐 Expense Tracker Web Interface")
     print("="*50)
-    print("\n📍 Server starting at: http://127.0.0.1:5000")
-    print("📍 Press Ctrl+C to stop the server")
-    print("\n🔐 Default Login:")
-    print("   Username: admin")
-    print("   Password: admin123\n")
-    app.run(debug=True)
+    
+    if is_production:
+        print("\n📍 Running in PRODUCTION mode")
+        app.run(debug=False, host='0.0.0.0')
+    else:
+        print("\n📍 Running in DEVELOPMENT mode")
+        print("📍 Server starting at: http://127.0.0.1:5000")
+        print("📍 Press Ctrl+C to stop the server")
+        print("\n🔐 Default Login:")
+        print("   Username: admin")
+        print("   Password: admin123\n")
+        app.run(debug=True, host='127.0.0.1', port=5000)
